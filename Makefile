@@ -1,0 +1,21 @@
+SHELL := /bin/bash
+
+VENV           = .venv
+VENV_PYTHON    = $(VENV)/bin/python
+
+# tests
+venv:
+	python3.11 -m venv $(VENV)
+
+install:
+	$(MAKE) venv
+	$(VENV_PYTHON) -m pip install -e .[dev]
+
+test:
+	$(VENV_PYTHON) -m pytest tests/
+
+run:
+	$(VENV_PYTHON) -m lisette --env_file .env
+
+run_debug:
+	$(VENV_PYTHON) -m lisette --env_file=.env --log_level=DEBUG

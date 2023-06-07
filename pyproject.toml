@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lisette"
+version = "0.1"
+license = {file = "LICENSE"}
+authors = [     
+  { name="Amelia Froemming"},
+]
+description = "A Discord bot for making list together"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "SQLAlchemy",
+    "py-cord",
+    "python-dotenv",
+    "aiosqlite",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/afroemming/lisette"
+
+[project.entry-points.console_scripts]
+main = 'lisette:main'
+
+[project.optional-dependencies]
+dev = [
+    "pylint",
+    "pytest",
+    "isort",
+    "pytest-asyncio"
+]
