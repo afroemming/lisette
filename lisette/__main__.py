@@ -2,77 +2,57 @@
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
 """Entrypoint module for Lisette bot."""
-import logging
 import asyncio
+import os
 
-import dotenv
-
-import discord
-import sqlalchemy.ext.asyncio as sqlaio
-import lisette.logging
-import lisette.core.database
-import lisette.lib.classes as classes
-from lisette.core.bot import Lisette
-from lisette.lib import config
-
-options = [
-    config.Option(
-        "log_level",
-        "Level message to log",
-        choices=["DEBUG", "INFO", "WARNING", "CRITICAL"],
-        default="WARNING",
-        warning=True,
-        post_load=lisette.logging.get_numeric,
-    ),
-    config.Option("token", "Discord bot token to use.", required=True),
-    config.Option(
-        "db_url",
-        "Url/ path to database to use for bot. For a local database, ie. 'sqlite:///",
-        required=True,
-    ),
-    config.Option("env_file", "Path to env file to load enviroment variables from."),
-]
+import lisette.lib.logging as logging
+import lisette.lib.config as config
+import lisette.core.options as op
+import lisette.core.database as database
+import lisette.core.bot as bot
 
 
 class App:
-    def __init__(self):
-        self.cfg: None | classes.Namespace = None
-        self.database: None | sqlaio.AsyncEngine = None
-        self.bot: None | Lisette = None
-        print(__name__)
+    """App main class"""
 
-    async def start(self):
-        """Lisette entrypoint function"""
-        logging.basicConfig()
-        core_filt = logging.Filter("lisette")
-        logging.root.addFilter(core_filt)
+    def __init__(self) -> None:
+        self.bot: bot.Bot | None = None
 
-        log = logging.getLogger(__name__)
-        cli_args = config.load_cli_args(options)
-        if cli_args.get("env_file") is not None:
-            log.info("Using env_file: %s", cli_args.env_file)
-            dotenv.load_dotenv(cli_args.env_file)
-        env_vars = config.load_env_vars(options, "LISETTE")
-        self.cfg = config.finalize(options, cli_args, env_vars)
-        log.root.setLevel(self.cfg.log_level)
+    async def start(self) -> None:
+        """Start bot loop and connect to database"""
+        log.info("Starting!")
+        log.info("Getting database %s", cfg.db_path)
+        database_ = await database.initalize(cfg.db_path)
+        token = cfg.token
+        self.bot = bot.Bot()
 
-        logging.info("Starting...")
-        logging.info("Will get database %s", self.cfg.db_url)
-        database = await lisette.core.database.initalize(self.cfg.db_url)
+        await self.bot.start(token)
 
-        self.bot = Lisette()
-        await self.bot.start(self.cfg.token)
-
-    async def close(self):
-        """Stop all tasks"""
+    async def close(self) -> None:
+        """Stop app loop"""
+        log.info("Shutting down.")
         if self.bot is None:
             raise TypeError
         await self.bot.close()
 
 
 if __name__ == "__main__":
+    DEBUG: bool = False
+    if (
+        os.getenv("LISETTE_DEBUG") == "1" or os.getenv("LISETTE_LOG_LEVEL") == "DEBUG"
+    ) and __debug__:
+        DEBUG = True
+        fb_log = logging.fallback_logger()
+        fb_log.warning("DEBUG MODE")
+
     app = App()
+    cfg = config.get_cfg(op.lis_options, env_prefix="LISETTE")
+    log = logging.initalize(cfg, "lisette", DEBUG)
+
+    loop = asyncio.get_event_loop()
     try:
-        asyncio.run(app.start())
+        loop.run_until_complete(app.start())
     except KeyboardInterrupt:
-        logging.info("Lisette is going down now.")
+        loop.run_until_complete(app.close())
+    finally:
+        log.info("All done. Bye!")

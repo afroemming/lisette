@@ -8,7 +8,7 @@ import discord
 log = logging.getLogger(__name__)
 
 
-class Lisette(discord.Bot):
+class Bot(discord.Bot):
     """pycord.Bot subclass for lisette"""
 
     def __init__(self, *args, **options):

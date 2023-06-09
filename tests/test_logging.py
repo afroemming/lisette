@@ -1,5 +1,8 @@
+# Copyright (c) 2023 Amelia Froemming
+# SPDX-License-Identifier: MIT
+# pylint: skip-file
 import logging
-from lisette.logging import logfn
+from lisette.lib.logging import logfn
 
 
 @logfn

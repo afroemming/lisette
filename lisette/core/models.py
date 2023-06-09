@@ -8,7 +8,7 @@ import sqlalchemy as sql
 import sqlalchemy.orm as sqlorm
 import sqlalchemy.ext.asyncio as sqlaio
 
-from lisette.logging import logfn
+from lisette.lib.logging import logfn
 
 DISCORD_MAX_CHARS = 2000
 

@@ -1,91 +1,157 @@
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
 """Module for config loading helper functions"""
+from typing import Any, Callable, Self
 import argparse
+import dataclasses
 import logging
 import os
 import sys
-from dataclasses import dataclass
-from typing import Any, Callable
+import types
 
-from lisette.lib import classes
+import dotenv
 
 log = logging.getLogger(__name__)
 
 
-@dataclass
+class ConfigurationError(Exception):
+    """Error for invalid configuration"""
+
+    def __init__(self, *args: object) -> None:
+        self.message = args[0]
+        super().__init__(*args)
+
+
+@dataclasses.dataclass
 class Option:
-    """A dataclass describing an option metadata"""
+    """Object representing an option.
+
+    Arguments:
+        name (str): Option name (long)
+        flags (str): Other cli flags to use (Optional)
+        arguments (dict): Dictionary of arguments to pass to argparse (Optional)
+        post_load (Callable): Function to transform value with (Optional)
+    """
 
     name: str
-    help: str
-    choices: list[str] | None = None
-    default: Any = None
+    flags: tuple[str] = tuple()
+    arguments: dict["str", Any] = dataclasses.field(default_factory=dict[str, Any])
+    post_load: Callable[[Any], Any] | None = None
     required: bool = False
-    warning: bool = False
-    post_load: Callable | None = None
 
 
-def validate(option: Option, cfg: classes.Namespace) -> Any:
-    """Validate an option and run it's post load, if any.
+class Cfg(types.SimpleNamespace):
+    """Holds a configuration"""
 
-    If a default is set and it is missing, sets value to default. If a post_load
-    function is set, run value through it and set to result. Then, return"""
-    name = option.name
-    if hasattr(cfg, name) and option.post_load is not None:
-        cfg[name] = option.post_load(cfg[name])
-    if hasattr(cfg, name):
-        return
-    if option.required:
-        raise ValueError(f"Missing required option {option.name}")
-    if option.warning:
-        log.warning("Missing optional option '%s'", option.name)
-    if option.default is not None:
-        log.warning("Using default %s", option.default)
-        cfg[name] = option.default
-        if option.post_load is not None:
-            cfg[name] = option.post_load(cfg[name])
+    def __contains__(self, key):
+        return hasattr(self, key)
+
+    def set(self, key: str, val: Any):
+        """Set value of key"""
+        setattr(self, key, val)
+
+    def get(self, key: Any, default: Any | None = None) -> Any:
+        """Return value of attr key or default if not set"""
+        return getattr(self, key, default)
+
+    def merge(self, other) -> Self:
+        """Returns merged namespace of other with this object.
+
+        This sets for all attrs in other self.attr to the value in other. Any
+        attributes in both are overwritten by other.
+        """
+        for attr, val in vars(other).items():
+            setattr(self, attr, val)
+        return self
+
+    def transform(self, options: list[Option]):
+        """Applies transformations set in option.post_load to each member"""
+        for option in options:
+            if option.name in self and option.post_load is not None:
+                val = self.get(option.name)
+                self.set(option.name, option.post_load(val))
+
+    @classmethod
+    def from_argparse(cls, nspc: argparse.Namespace) -> Self:
+        """Return Cfg made from an argparse.Namespace
+
+        All attrs of nspc are put into a Cfg, then any that are None are deleted.
+        """
+        out = cls()
+        for key, val in vars(nspc).items():
+            if val is not None:
+                out.set(key, val)
+        return out
 
 
-def load_cli_args(options: list[Option]) -> classes.Namespace:
-    """Load all options that are provided thru cli."""
-    log.debug("Args %s", sys.argv)
-    parser = argparse.ArgumentParser()
+def get_cli_args(options: list[Option]) -> Cfg:
+    """Return Cfg loaded with cli arguments"""
+    parser = argparse.ArgumentParser(
+        description="A Discord bot for making lists together."
+    )
     for option in options:
-        parser.add_argument("--" + option.name, help=option.help)
-    cfg = classes.Namespace(**vars(parser.parse_args()))
-    logging.debug("got cli args: %r", cfg)
+        long_name: str = "--" + option.name.replace("_", "-")
+        log.debug("making cli arg w/ flag '%s' from %s", long_name, option)
+        parser.add_argument(*option.flags, long_name, **option.arguments)
+    cli_args, _unknown = parser.parse_known_args()
+    cfg = Cfg.from_argparse(cli_args)
+    cfg.transform(options)
     return cfg
 
 
-def load_env_vars(options: list[Option], env_prefix) -> classes.Namespace:
-    """Load all options set thru shell environment"""
-    log.debug("Shell env: %s", os.environ)
-    cfg = classes.Namespace()
+def get_env_vars(options: list[Option], env_prefix: str | None = None):
+    """Load env vars"""
+    log.debug("Env: %s", os.environ)
+    env_vars = Cfg()
     for option in options:
         env_name = option.name.upper()
         if env_prefix is not None:
-            tmp = env_prefix, env_name
-            env_name = "_".join(tmp)
+            env_name = "_".join((env_prefix, env_name))
+        log.debug("Trying to load %s", env_name)
         if env_name in os.environ:
-            log.debug("found '%s': '%r' in environ", env_name, os.environ[env_name])
-            cfg[option.name] = os.environ[env_name]
-    return cfg
+            env_vars.set(option.name, os.environ[env_name])
+            log.debug("got %s", env_vars.get(option.name))
+        else:
+            log.debug("%s not found in environment", option.name)
+    env_vars.transform(options)
+    return env_vars
 
 
-def finalize(
-    options: list[Option], cli_args: classes.Namespace, env_vars: classes.Namespace
-):
-    """Join cli_args and env_vars and validate all options.
-
-    For any options in both cli_args and env_vars, the value will be set to the
-    one in cli args.
-
-    Raises:
-        ValueError: Missing required option
-    """
-    cfg = env_vars.union(cli_args)
-    log.debug(cfg)
+def validate_required(options: list[Option], cfg: Cfg) -> None:
+    """Raises ConfigurationError if cfg is missing a required option"""
     for option in options:
-        validate(option, cfg)
+        log.debug("checking %s", option.name)
+        if not option.required:
+            log.debug("not required")
+            continue
+        if not option.name in cfg:
+            raise ConfigurationError(f"Missing required setting {option.name}")
+
+
+def get_cfg(
+    options: list[Option], env_prefix: str | None = None, exit_on_error=True
+) -> Cfg:
+    """Return a complete configuration from a list of options"""
+    # load cli args first, so we can see if we are given an env file
+    cli_args = get_cli_args(options)
+    log.debug(": got %s", cli_args)
+    if "env_file" in cli_args:
+        log.info("loading env vars from %s", cli_args.env_file)
+        dotenv.load_dotenv(cli_args.env_file, verbose=True)
+    env_vars = get_env_vars(options, env_prefix)
+
+    # Merge, overwritting dups by cli_args
+    cfg = env_vars.merge(cli_args)
+
+    # Make sure required options are loaded
+    try:
+        log.debug("got cfg: %r", cfg)
+        validate_required(options, cfg)
+    except ConfigurationError as err:
+        log.critical(err.message)
+        if exit_on_error:
+            log.critical("EXITING.")
+            sys.exit(1)
+        raise
+
     return cfg

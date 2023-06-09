@@ -17,5 +17,5 @@ test:
 run:
 	$(VENV_PYTHON) -m lisette --env_file .env
 
-run_debug:
-	$(VENV_PYTHON) -m lisette --env_file=.env --log_level=DEBUG
+run-debug:
+	LISETTE_DEBUG=1 $(VENV_PYTHON) -m lisette --env_file=.env
