@@ -8,6 +8,7 @@ from typing import Callable
 
 
 def fallback_logger() -> logging.Logger:
+    """Setup basic logger with log level DEBUG"""
     logging.basicConfig(level=logging.DEBUG)
     return logging.getLogger()
 

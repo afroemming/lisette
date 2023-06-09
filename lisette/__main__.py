@@ -10,6 +10,7 @@ from lisette.core import database
 from lisette.core import options
 from lisette.lib import config
 from lisette.lib import logging
+from lisette.cogs import lists
 
 
 class App:
@@ -25,6 +26,8 @@ class App:
         database_ = await database.initalize(cfg.db_path)
         token = cfg.token
         self.bot = bot.Bot()
+
+        self.bot.add_cog(lists.Lists(self.bot))
 
         await self.bot.start(token)
 

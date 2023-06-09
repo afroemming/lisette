@@ -83,7 +83,6 @@ class TaskList(Base):
             await session.commit()
         return msg_id
 
-    @logfn
     def insert(self, task: "Task"):
         """Insert a new task into this list."""
         # Get next free short id
@@ -135,6 +134,14 @@ class TaskList(Base):
         stmt = sql.select(cls).where(cls.guild_id == guild_id)
         return (await session.scalars(stmt)).all()
 
+    @classmethod
+    async def guild_all_names(
+        cls, session: sqlaio.AsyncSession, guild_id: int
+    ) -> Sequence[str]:
+        """Returns a list of names of lists in a guild."""
+        stmt = sql.select(cls.name).where(cls.guild_id == guild_id)
+        return (await session.scalars(stmt)).all()
+
     def __len__(self) -> int:
         sum_ = 0
         sum_ += len(self.pretty_name())
@@ -163,8 +170,8 @@ class Task(Base):
     CHECKED_FRMT = "☑  ~~{0}~~\n"
     UNCHECKED_FRMT = "☐  {0}\n"
 
-    id: sqlorm.Mapped[int] = sqlorm.mapped_column(init=False, primary_key=True)
     content: sqlorm.Mapped[str]
+    id: sqlorm.Mapped[int] = sqlorm.mapped_column(init=False, primary_key=True)
     parent_list: sqlorm.Mapped[TaskList] = sqlorm.relationship(
         back_populates="tasks", init=False
     )

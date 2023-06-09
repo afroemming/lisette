@@ -1,5 +1,8 @@
-import lisette.lib.config as config
-import lisette.lib.logging as logging
+# Copyright (c) 2023 Amelia Froemming
+# SPDX-License-Identifier: MIT
+"""Module providing options list for Lisette"""
+from lisette.lib import config
+from lisette.lib import logging
 
 lis_options = [
     config.Option(

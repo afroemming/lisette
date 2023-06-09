@@ -2,16 +2,14 @@
 # SPDX-License-Identifier: MIT
 """Provides database setup and access helper functions"""
 import logging
-from typing import Sequence
-
-import sqlalchemy as sql
 import sqlalchemy.ext.asyncio as sqlaio
 
-import lisette.core.models as models
+from lisette.core import models
 
 log = logging.getLogger(__name__)
 
 SESSION: sqlaio.async_sessionmaker[sqlaio.AsyncSession] = sqlaio.async_sessionmaker()
+ENGINE: sqlaio.AsyncEngine | None = None
 
 
 async def initalize(path, debug=False):
@@ -24,9 +22,10 @@ async def initalize(path, debug=False):
         sql_log.setLevel(logging.DEBUG)
     url = "".join(("sqlite+aiosqlite://", path))
     global ENGINE  # pylint: disable=global-statement
-    global SESSION  # pylint: disable=global-statement
     ENGINE = sqlaio.create_async_engine(url)
     SESSION.configure(bind=ENGINE)
 
     async with ENGINE.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
+
+    return ENGINE
