@@ -1,11 +1,12 @@
 """Module with commands for manipulating lists."""
 
 import discord
-from discord import ApplicationContext
 import discord.ext.commands as commands
+from discord import ApplicationContext
+
 import lisette.core.database
-from lisette.core.database import SESSION_MKR
 from lisette.core import models
+from lisette.core.database import SESSION_MKR
 
 
 def format_info(guild_id) -> str:

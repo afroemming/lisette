@@ -1,8 +1,8 @@
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
 """Logging helper functions"""
-import logging
 import functools
+import logging
 import sys
 from typing import Callable
 

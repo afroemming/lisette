@@ -1,8 +1,8 @@
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
 """Provides database setup and access helper functions"""
-from typing import Sequence
 import logging
+from typing import Sequence
 
 import sqlalchemy as sql
 import sqlalchemy.ext.asyncio as sqlaio

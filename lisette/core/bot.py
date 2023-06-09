@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 """Module contains subclass definition for pycord Bot"""
 import logging
+
 import discord
 
 log = logging.getLogger(__name__)

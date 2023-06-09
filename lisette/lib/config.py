@@ -1,13 +1,13 @@
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
 """Module for config loading helper functions"""
-from typing import Any, Callable, Self
 import argparse
 import dataclasses
 import logging
 import os
 import sys
 import types
+from typing import Any, Callable, Self
 
 import dotenv
 

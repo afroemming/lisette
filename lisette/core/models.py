@@ -5,8 +5,8 @@ import logging
 from typing import List, Self, Sequence
 
 import sqlalchemy as sql
-import sqlalchemy.orm as sqlorm
 import sqlalchemy.ext.asyncio as sqlaio
+import sqlalchemy.orm as sqlorm
 
 from lisette.lib.logging import logfn
 

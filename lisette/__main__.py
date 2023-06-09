@@ -5,11 +5,11 @@
 import asyncio
 import os
 
-import lisette.lib.logging as logging
-import lisette.lib.config as config
-import lisette.core.options as op
-import lisette.core.database as database
-import lisette.core.bot as bot
+from lisette.core import bot
+from lisette.core import database
+from lisette.core import options
+from lisette.lib import config
+from lisette.lib import logging
 
 
 class App:
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         fb_log.warning("DEBUG MODE")
 
     app = App()
-    cfg = config.get_cfg(op.lis_options, env_prefix="LISETTE")
+    cfg = config.get_cfg(options.lis_options, env_prefix="LISETTE")
     log = logging.initalize(cfg, "lisette", DEBUG)
 
     loop = asyncio.get_event_loop()
