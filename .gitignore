@@ -12,3 +12,4 @@ __pycache__/
 .db.sqlite
 .venv
 .pytest_cache
+*.log
