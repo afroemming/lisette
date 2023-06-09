@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MIT
 # pylint: skip-file
 import os
+
 import pytest
+
 from lisette.lib.config import *
 
 

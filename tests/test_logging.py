@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 # pylint: skip-file
 import logging
+
 from lisette.lib.logging import logfn
 
 

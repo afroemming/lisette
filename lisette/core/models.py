@@ -2,13 +2,11 @@
 # SPDX-License-Identifier: MIT
 """ORM models for Lisette"""
 import logging
-from typing import List, Self, Sequence
+from typing import List, Self, Sequence, Type
 
 import sqlalchemy as sql
 import sqlalchemy.ext.asyncio as sqlaio
 import sqlalchemy.orm as sqlorm
-
-from lisette.lib.logging import logfn
 
 DISCORD_MAX_CHARS = 2000
 
@@ -49,7 +47,8 @@ class TaskList(Base):
     tasks: sqlorm.Mapped[List["Task"]] = sqlorm.relationship(
         default_factory=list,
         back_populates="parent_list",
-        cascade="all, delete-orphan",
+        cascade="save-update, merge, delete, delete-orphan",
+        order_by="Task.local_id",
     )
     msg_id: sqlorm.Mapped[int] = sqlorm.mapped_column(default=None)
 
@@ -68,20 +67,6 @@ class TaskList(Base):
 
     def _len_tasks(self):
         return sum(map(len, self.tasks))
-
-    async def delete(self, session: sqlaio.AsyncSession, commit=True) -> int:
-        """Delete self from database.
-
-        The associated discord message must be deleted seperately. If commit is
-        True, commit session to database after changes.
-        Returns
-            int: msg_id for self.
-        """
-        msg_id = self.msg_id
-        await session.delete(self)
-        if commit:
-            await session.commit()
-        return msg_id
 
     def insert(self, task: "Task"):
         """Insert a new task into this list."""
@@ -110,7 +95,7 @@ class TaskList(Base):
 
     @classmethod
     async def lookup(
-        cls, session: sqlaio.AsyncSession, guild_id: int, name: str
+        cls: Type[Self], session: sqlaio.AsyncSession, guild_id: int, name: str
     ) -> Self:
         """Returns TaskList matching guild_id & name if found.
 
@@ -128,18 +113,10 @@ class TaskList(Base):
 
     @classmethod
     async def guild_all(
-        cls, session: sqlaio.AsyncSession, guild_id: int
+        cls: Type[Self], session: sqlaio.AsyncSession, guild_id: int
     ) -> Sequence[Self]:
         """Return a Sequence of all TaskLists in guild."""
         stmt = sql.select(cls).where(cls.guild_id == guild_id)
-        return (await session.scalars(stmt)).all()
-
-    @classmethod
-    async def guild_all_names(
-        cls, session: sqlaio.AsyncSession, guild_id: int
-    ) -> Sequence[str]:
-        """Returns a list of names of lists in a guild."""
-        stmt = sql.select(cls.name).where(cls.guild_id == guild_id)
         return (await session.scalars(stmt)).all()
 
     def __len__(self) -> int:
@@ -182,7 +159,7 @@ class Task(Base):
     checked: sqlorm.Mapped[bool] = sqlorm.mapped_column(default=False)
 
     @classmethod
-    def _format_content(cls, content, checked) -> str:
+    def _format_content(cls, content: str, checked: bool) -> str:
         """Returns content formatted for display based on bool checked"""
         if checked:
             return cls.CHECKED_FRMT.format(content)
@@ -192,8 +169,7 @@ class Task(Base):
         """Returns content formatted for display"""
         return Task._format_content(self.content, self.checked)
 
-    @logfn
-    async def delete(self, session: sqlaio.AsyncSession, commit: bool = True) -> None:
+    async def delete(self, session: sqlaio.AsyncSession, commit: bool = False) -> None:
         """Deletes a Task from its parent and renumbers Tasks w/ higher local_id
 
         If commit = True, the changes are committed to database. If false, the session passed
@@ -203,14 +179,17 @@ class Task(Base):
         # Get list of parent list tasks in order
         log.debug("Trying to get tasks in same list")
         parent = await session.get(TaskList, self.parent_list_id)
+        del_task_id = self.id
         if parent is None:
-            raise TypeError
+            raise TypeError("Task has no parent.")
 
         await session.delete(self)
         log.debug("DB del done.")
 
         # Renumber tasks with local_ids above this one's
-        for task in await parent.awaitable_attrs.tasks:
+        tasks: list["Task"] = await parent.awaitable_attrs.tasks
+        tasks.sort(key=lambda x: x.local_id)  # type: ignore
+        for task in tasks[del_task_id:]:
             if task.local_id is None:
                 raise TypeError
             task.local_id -= 1
@@ -247,7 +226,6 @@ class Task(Base):
             .where(TaskList.name == lst_name)
             .where(cls.local_id == local_id)
         )
-        log.debug(stmt)
         return (await session.scalars(stmt)).one()
 
     def __len__(self) -> int:

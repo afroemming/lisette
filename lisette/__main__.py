@@ -5,12 +5,12 @@
 import asyncio
 import os
 
-from lisette.core import bot
-from lisette.core import database
-from lisette.core import options
-from lisette.lib import config
-from lisette.lib import logging
+import sqlalchemy.ext.asyncio as sqlaio
+
 from lisette.cogs import lists
+from lisette.cogs import tasks
+from lisette.core import bot, database, options
+from lisette.lib import config, logging
 
 
 class App:
@@ -18,24 +18,27 @@ class App:
 
     def __init__(self) -> None:
         self.bot: bot.Bot | None = None
+        self.engine: sqlaio.AsyncEngine | None = None
 
     async def start(self) -> None:
         """Start bot loop and connect to database"""
         log.info("Starting!")
         log.info("Getting database %s", cfg.db_path)
-        database_ = await database.initalize(cfg.db_path)
+        self.engine = await database.initalize(cfg.db_path, DEBUG)
         token = cfg.token
         self.bot = bot.Bot()
 
-        self.bot.add_cog(lists.Lists(self.bot))
+        self.bot.add_cog(lists.ListsCog(self.bot))
+        self.bot.add_cog(tasks.TasksCog(self.bot))
 
         await self.bot.start(token)
 
     async def close(self) -> None:
         """Stop app loop"""
-        log.info("Shutting down.")
-        if self.bot is None:
+        if not self.bot or not self.engine:
             raise TypeError
+        log.info("Shutting down.")
+        await self.engine.dispose()
         await self.bot.close()
 
 
@@ -45,8 +48,8 @@ if __name__ == "__main__":
         os.getenv("LISETTE_DEBUG") == "1" or os.getenv("LISETTE_LOG_LEVEL") == "DEBUG"
     ) and __debug__:
         DEBUG = True
-        fb_log = logging.fallback_logger()
-        fb_log.warning("DEBUG MODE")
+        log = logging.fallback_logger("lisette")
+        log.warning("DEBUG MODE")
 
     app = App()
     cfg = config.get_cfg(options.lis_options, env_prefix="LISETTE")

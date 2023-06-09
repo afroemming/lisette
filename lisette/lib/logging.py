@@ -7,16 +7,18 @@ import sys
 from typing import Callable
 
 
-def fallback_logger() -> logging.Logger:
+def fallback_logger(name: str) -> logging.Logger:
     """Setup basic logger with log level DEBUG"""
-    logging.basicConfig(level=logging.DEBUG)
-    return logging.getLogger()
+    logging.basicConfig()
+    fb_log = logging.getLogger(name)
+    fb_log.setLevel(logging.DEBUG)
+    return fb_log
 
 
 def initalize(cfg, pkg_name: str, debug=False):
     """Setup logging."""
     if debug:
-        return fallback_logger()
+        return fallback_logger(pkg_name)
     log_level: int = cfg.get("log_level")
     if not log_level:
         log_level = logging.WARNING

@@ -1,11 +1,19 @@
 # pylint: skip-file
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
+import logging
+
 import pytest
-from lisette.core import database
-from lisette.core import models
-from lisette.core.database import SESSION
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from lisette.core import database, models
+from lisette.core.database import SESSION
+
+
+@pytest.fixture()
+async def dbglog(caplog):
+    caplog.set_level(logging.DEBUG, logger="lisette")
+    caplog.set_level(logging.DEBUG, logger="sqlalchemy.engine")
 
 
 @pytest.fixture()
@@ -13,11 +21,12 @@ async def db_session():
     """
     Get a database session
     """
-    await database.initalize("")
+    engine = await database.initalize("")
     session = SESSION()
     yield session
     await session.rollback()
     await session.close()
+    await engine.dispose()
 
 
 @pytest.fixture

@@ -2,13 +2,16 @@
 # SPDX-License-Identifier: MIT
 """Provides database setup and access helper functions"""
 import logging
+
 import sqlalchemy.ext.asyncio as sqlaio
 
 from lisette.core import models
 
 log = logging.getLogger(__name__)
 
-SESSION: sqlaio.async_sessionmaker[sqlaio.AsyncSession] = sqlaio.async_sessionmaker()
+SESSION: sqlaio.async_sessionmaker[sqlaio.AsyncSession] = sqlaio.async_sessionmaker(
+    expire_on_commit=False
+)
 ENGINE: sqlaio.AsyncEngine | None = None
 
 

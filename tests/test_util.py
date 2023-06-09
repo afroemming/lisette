@@ -2,6 +2,7 @@
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
 import pytest
+
 from lisette.lib import util
 
 

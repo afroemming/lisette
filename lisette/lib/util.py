@@ -10,3 +10,14 @@ def split_len(txt: str, length: int = 2000) -> list[str]:
         out.append(txt[:length])
         txt = txt[length:]
     return out
+
+
+def split_int(txt: str) -> list[int]:
+    """Split a whitespace seperated str of integers to a list of integers
+
+    Raises:
+        ValueError
+    """
+    strings = txt.split()
+    ints = [int(x) for x in strings]
+    return ints

@@ -3,13 +3,14 @@
 # pylint: skip-file
 
 import pytest
-import lisette.core.models as models
-import lisette.core.database as database
-from lisette.core.database import SESSION
-from tests.fixtures import db_session, task_list, task_lists
 import sqlalchemy as sql
 import sqlalchemy.exc as sqlexc
 from sqlalchemy.ext.asyncio import AsyncSession
+
+import lisette.core.database as database
+import lisette.core.models as models
+from lisette.core.database import SESSION
+from tests.fixtures import db_session, task_list, task_lists
 
 
 async def test_lookup_task_list(db_session: AsyncSession, task_list: models.TaskList):
@@ -64,13 +65,3 @@ async def test_guild_all(db_session: AsyncSession, task_lists: tuple[models.Task
     assert "list 1" in names
     assert "list 2" in names
     assert not "list 3" in names
-
-
-async def test_delete_task_list(db_session, task_list):
-    db_session.add(task_list)
-    await db_session.commit()
-    lst = await models.TaskList.lookup(db_session, 0, "list 1")
-    await lst.delete(db_session)
-    await db_session.commit()
-    with pytest.raises(sqlexc.NoResultFound):
-        await models.TaskList.lookup(db_session, 0, "list 1")
