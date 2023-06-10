@@ -2,6 +2,7 @@
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
 """Module contains subclass definition for pycord Bot"""
+import asyncio
 import logging
 from typing import Any
 
@@ -14,7 +15,15 @@ class Bot(discord.Bot):
     """pycord.Bot subclass for lisette"""
 
     def __init__(self, *args: Any, **options: Any) -> None:
-        discord.Bot.__init__(self, *args, **options) # type: ignore
+        discord.Bot.__init__(self, *args, **options)  # type: ignore
+
+    async def begin(self, token: str) -> None:
+        try:
+            await self.start(token)
+        except asyncio.CancelledError:
+            log.info("Closing bot task.")
+            await self.close()
+            raise
 
     async def on_ready(self) -> None:
         """Override the on_ready event to echo to log"""

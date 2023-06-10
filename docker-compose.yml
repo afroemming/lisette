@@ -1,0 +1,21 @@
+version: '0.1'
+services:
+  lisette:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - LISETTE_DB_PATH=//data/.db.sqlite
+      - LISETTE_LOG_LEVEL=INFO
+      - LISETTE_TOKEN_FILE=/run/secrets/token
+    secrets:
+      - token
+    volumes:
+      - data:/data
+
+secrets:
+  token:
+    file: .secrets/token
+
+volumes:
+  data:
