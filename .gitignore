@@ -13,5 +13,5 @@ __pycache__/
 .venv
 .pytest_cache
 *.log
-.secrets
-.data
+.secrets/
+.data/
