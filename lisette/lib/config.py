@@ -128,8 +128,34 @@ def validate_required(options: list[Option], cfg: Cfg) -> None:
             raise ConfigurationError(f"Missing required setting {option.name}")
 
 
+def get_files(options: list[Option], env_prefix: str | None) -> Cfg:
+    """Try to load options from files"""
+    cfg = Cfg()
+    for option in options:
+        # Build env var name
+        path_env = option.name.upper()
+        if env_prefix is not None:
+            path_env = "_".join((env_prefix, path_env))
+        path_env = "_".join((path_env, "FILE"))
+
+        # Try to load env var
+        if not path_env in os.environ:
+            continue
+        path = os.environ[path_env]
+        if not os.path.exists(path):
+            log.warning(
+                "Got path %s for %s, but file does not exist.", path, option.name
+            )
+            continue
+        log.info("Reading '%s' from '%s'.", option.name, path)
+        with open(path, "r") as f:
+            txt = f.read().strip()
+        cfg.set(option.name, txt)
+    return cfg
+
+
 def get_cfg(
-    options: list[Option], env_prefix: str | None = None, exit_on_error: bool=True
+    options: list[Option], env_prefix: str | None = None, exit_on_error: bool = True
 ) -> Cfg:
     """Return a complete configuration from a list of options"""
     # load cli args first, so we can see if we are given an env file
@@ -139,9 +165,9 @@ def get_cfg(
         log.info("loading env vars from %s", cli_args.env_file)
         dotenv.load_dotenv(cli_args.env_file, verbose=True)
     env_vars = get_env_vars(options, env_prefix)
-
+    file_ops = get_files(options, env_prefix)
     # Merge, overwritting dups by cli_args
-    cfg: Cfg = env_vars.merge(cli_args)
+    cfg: Cfg = file_ops.merge(env_vars.merge(cli_args))
 
     # Make sure required options are loaded
     try:
