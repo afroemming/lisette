@@ -174,3 +174,61 @@ async def test_del_task_many(db_session, task_list) -> None:
 
     assert update.id == 0
     assert update.content == correct
+
+
+async def test_get_edit_txt(db_session, task_list):
+    task_list.tasks[0].checked = True
+    db_session.add(task_list)
+    pprint(task_list)
+    await db_session.commit()
+    await db_session.close()
+
+    answer = await helpers.get_edit_txt(0, "list 1")
+    print(answer)
+    correct = "!do something\n" "do something else\n" "do a third thing"
+
+    assert answer == correct
+
+
+async def test_put_line(db_session, dbglog):
+    full_txt = "!do a\n" "do b\n" "do c"
+    tasks = []
+    for line in full_txt.splitlines():
+        task = helpers.put_line(line)
+        tasks.append(task)
+
+    assert tasks[0].content == "do a"
+    assert tasks[1].content == "do b"
+    assert tasks[2].content == "do c"
+
+    assert tasks[0].checked
+    assert not tasks[1].checked
+    assert not tasks[2].checked
+
+
+async def test_put_edit(db_session, task_list, dbglog):
+    db_session.add(task_list)
+    await db_session.commit()
+    await db_session.close()
+
+    full_text = "!do a\n" "do b\n" "do c"
+    update = await helpers.put_edit(0, "list 1", full_text)
+
+    assert update.id == 0
+    assert update.content == "".join(
+        [
+            "**list 1**\n",
+            models.Task.CHECKED_FRMT.format("do a"),
+            models.Task.UNCHECKED_FRMT.format("do b"),
+            models.Task.UNCHECKED_FRMT.format("do c"),
+        ]
+    )
+
+    lst = await models.TaskList.lookup(db_session, 0, "list 1")
+    tasks = await lst.awaitable_attrs.tasks
+    assert tasks[0].checked
+    assert not tasks[1].checked
+    assert not tasks[2].checked
+    assert tasks[0].content == "do a"
+    assert tasks[1].content == "do b"
+    assert tasks[2].content == "do c"

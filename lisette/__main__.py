@@ -29,7 +29,6 @@ class App:
 
         self.bot.add_cog(lists.ListsCog(self.bot))
         self.bot.add_cog(tasks.TasksCog(self.bot))
-
         await self.bot.start(token)
 
     async def close(self) -> None:

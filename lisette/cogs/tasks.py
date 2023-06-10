@@ -10,6 +10,7 @@ import sqlalchemy.exc as sqlexc
 from lisette.cogs import helpers
 from lisette.core.bot import Bot
 from lisette.core.collections import MsgUpdate
+from lisette.core import modals
 from lisette.lib import util
 
 log = logging.getLogger(__name__)
@@ -23,10 +24,24 @@ class TasksCog(disc.Cog):
     )
 
     def __init__(self, bot_: Bot):
-        log.info("Adding cog Tasks")
+        log.info("Adding cog 'tasks'")
         self.bot = bot_
 
+    @tasks_grp.command(description="Edit all of a list tasks in a pop-up dialog")  # type: ignore
+    @dis.option("list_name", str, help="List to edit tasks of.")  # type: ignore
+    async def edit(self, ctx: dis.ApplicationContext, list_name):
+        if ctx.guild is None:
+            await ctx.respond("Inappropriate context")
+            return
+        txt = await helpers.get_edit_txt(ctx.guild.id, list_name)
+        log.debug(txt)
+        modal = modals.TasksEdit(
+            title=f"Edit '{list_name}'", txt=txt, list_name=list_name
+        )
+        await ctx.send_modal(modal)
+
     @tasks_grp.command()
+    @dis.option("list_name", str, help="Name of list to print task info for")  # type: ignore
     async def info(self, ctx: dis.ApplicationContext, list_name: str) -> None:
         """Print info about a list and it's tasks."""
         if ctx.guild is None:
@@ -40,8 +55,12 @@ class TasksCog(disc.Cog):
         for msg in msgs:
             await ctx.respond(msg, ephemeral=True)
 
-    @tasks_grp.command()
-    async def new(self, ctx: dis.ApplicationContext, list_name: str, content: str) -> None:
+    @tasks_grp.command(description="Add a new task to a list")
+    @dis.option("list_name", str, help="Name of list to add task to.")  # type: ignore
+    @dis.option("content", str, help="Text to put with task.")  # type: ignore
+    async def new(
+        self, ctx: dis.ApplicationContext, list_name: str, content: str
+    ) -> None:
         """Add a new task to a list"""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")
@@ -62,8 +81,10 @@ class TasksCog(disc.Cog):
         "positions",
         str,
         help="A whitespace seperated list of integers. Ie.: '1 2 3'. Indexed from zero",
-    ) # type: ignore
-    async def del_(self, ctx: dis.ApplicationContext, list_name: str, positions: str) -> None:
+    )  # type: ignore
+    async def del_(
+        self, ctx: dis.ApplicationContext, list_name: str, positions: str
+    ) -> None:
         """Delete a task."""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")
@@ -94,8 +115,10 @@ class TasksCog(disc.Cog):
         "positions",
         str,
         help="A whitespace seperated list of integers. Ie.: '1 2 3'. Indexed from zero",
-    ) # type: ignore
-    async def chk(self, ctx: dis.ApplicationContext, list_name: str, positions: str) -> None:
+    )  # type: ignore
+    async def chk(
+        self, ctx: dis.ApplicationContext, list_name: str, positions: str
+    ) -> None:
         """Check or uncheck tasks with given positions"""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")

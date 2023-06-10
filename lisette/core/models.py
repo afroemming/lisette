@@ -9,6 +9,7 @@ import sqlalchemy.ext.asyncio as sqlaio
 import sqlalchemy.orm as sqlorm
 
 DISCORD_MAX_CHARS = 2000
+LIST_NAME_MAX = 38  # To fit in modal title
 
 log = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ log = logging.getLogger(__name__)
 # pylint: disable=too-few-public-methods
 class Base(sqlorm.DeclarativeBase, sqlorm.MappedAsDataclass, sqlaio.AsyncAttrs):
     """Internal base class for model objects"""
+
     def __post_init__(self) -> None:
         log.debug("new %r", self)
 
@@ -72,16 +74,24 @@ class TaskList(Base):
         self.tasks.append(task)
         log.debug("inserted %r into %r", task, self)
 
+    async def clear(self, session: sqlaio.AsyncSession) -> None:
+        """Clear all tasks from self"""
+        tasks = await self.awaitable_attrs.tasks
+        for task in tasks:
+            await session.delete(task)
+
     @sqlorm.validates("name")
     def _valid_name_length(self, cb_key: str, name: str) -> str:
-        """Ensure new list name doesn't make message too long"""
+        """Ensure new list name doesn't make message/ edit modal title too long"""
+        if len(name) > LIST_NAME_MAX:
+            raise ValueError("Max list name length is 38 characters")
         new_length = len(name) + self._len_tasks()
         if new_length > DISCORD_MAX_CHARS:
             raise ValueError("List name would make message too long.")
         return name
 
     @sqlorm.validates("tasks")
-    def _valid_list_length(self, cb_key: str, task: 'Task') -> "Task":
+    def _valid_list_length(self, cb_key: str, task: "Task") -> "Task":
         """Ensure list will not be too long when adding task."""
         new_length = len(self) + len(task)
         if new_length > DISCORD_MAX_CHARS:
