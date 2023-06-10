@@ -4,8 +4,17 @@
 import functools
 import logging
 import sys
-from typing import Callable
+from typing import Any, Callable, TypeVar, Generic, Final, ParamSpec
 
+from lisette.lib import config
+
+LEVELS: Final = {
+    'DEBUG': 10,
+    'INFO' : 20,
+    'WARNING': 30,
+    'ERROR': 40,
+    'CRITICAL': 50 
+}
 
 def fallback_logger(name: str) -> logging.Logger:
     """Setup basic logger with log level DEBUG"""
@@ -15,7 +24,7 @@ def fallback_logger(name: str) -> logging.Logger:
     return fb_log
 
 
-def initalize(cfg, pkg_name: str, debug=False):
+def initalize(cfg: config.Cfg, pkg_name: str, debug: bool = False) -> logging.Logger:
     """Setup logging."""
     if debug:
         return fallback_logger(pkg_name)
@@ -25,7 +34,7 @@ def initalize(cfg, pkg_name: str, debug=False):
         logging.warning("Log level not configured. Using default WARNING")
     log: logging.Logger = logging.getLogger(pkg_name)
     log.setLevel(log_level)
-    log.info("Using log level %r", logging.getLevelName(log_level))
+    log.info("Using log level %r")
 
     fmt: str = "%(asctime)s - %(levelname)s - %(message)s"
     datefmt: str = "%b %d %H:%M:%S"
@@ -37,29 +46,18 @@ def initalize(cfg, pkg_name: str, debug=False):
 
     return log
 
-
 def get_numeric(txt: str) -> int:
     """Try to get numeric log level from txt, returning WARNING if invalid."""
-    num = getattr(logging, txt, None)
-    if num is None:
-        logging.warning("Invalid log level %s. Using default WARNING.")
-        return logging.WARNING
-    return num
+    if txt in LEVELS:
+        return LEVELS[txt]
+    return logging.WARNING
 
+P = ParamSpec('P')
+R = TypeVar('R')
 
-def logfn(fn: Callable):  # pylint: disable=C0103
-    """Decorator that logs function calls when attached to a function fn"""
-
-    @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
-        if logging.root.level is not logging.DEBUG:
-            return fn(*args, **kwargs)
-        module = fn.__module__
-        log = logging.getLogger(module)
-        info = f"{fn}, args={args}, kwargs={kwargs}"
-        log.debug("executing %s", info)
-        out = fn(*args, *kwargs)
-        log.debug("operation %s completed, returning %r", info, out)
-        return out
-
-    return wrapper
+def logfn(f: Callable[P, R]) -> Callable[P, R]:
+    @functools.wraps(f)
+    def inner(*args: P.args, **kwargs: P.kwargs) -> R:
+        logging.debug('called %s', f.__name__)
+        return f(*args, **kwargs)
+    return inner

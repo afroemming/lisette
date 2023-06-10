@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 """Module contains subclass definition for pycord Bot"""
 import logging
+from typing import Any
 
 import discord
 
@@ -12,10 +13,10 @@ log = logging.getLogger(__name__)
 class Bot(discord.Bot):
     """pycord.Bot subclass for lisette"""
 
-    def __init__(self, *args, **options):
-        discord.Bot.__init__(self, *args, **options)
+    def __init__(self, *args: Any, **options: Any) -> None:
+        discord.Bot.__init__(self, *args, **options) # type: ignore
 
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         """Override the on_ready event to echo to log"""
         if self.user is None:
             raise TypeError

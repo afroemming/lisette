@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Module with commands for manipulating lists."""
 import logging
+from typing import NoReturn
 
 import discord as dis
 import discord.ext.commands as disc
@@ -57,8 +58,8 @@ class ListsCog(disc.Cog):
         await ctx.respond(f"Deleted '{name}'.", ephemeral=True)
 
     async def cog_command_error(
-        self, ctx: dis.ApplicationContext, error: dis.ApplicationCommandError
-    ):
+        self, ctx: dis.ApplicationContext, error: Exception
+    ) -> NoReturn:
         log.exception("Unhandled exception:", exc_info=error)
         await ctx.respond(
             f"There was an error while doing a command ({ctx.command}): {type(error)}",

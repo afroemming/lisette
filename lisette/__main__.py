@@ -7,8 +7,7 @@ import os
 
 import sqlalchemy.ext.asyncio as sqlaio
 
-from lisette.cogs import lists
-from lisette.cogs import tasks
+from lisette.cogs import lists, tasks
 from lisette.core import bot, database, options
 from lisette.lib import config, logging
 

@@ -16,10 +16,7 @@ log = logging.getLogger(__name__)
 # pylint: disable=too-few-public-methods
 class Base(sqlorm.DeclarativeBase, sqlorm.MappedAsDataclass, sqlaio.AsyncAttrs):
     """Internal base class for model objects"""
-
-    id: int | None
-
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         log.debug("new %r", self)
 
 
@@ -65,10 +62,10 @@ class TaskList(Base):
             txt += task.pretty_txt()
         return txt
 
-    def _len_tasks(self):
+    def _len_tasks(self) -> int:
         return sum(map(len, self.tasks))
 
-    def insert(self, task: "Task"):
+    def insert(self, task: "Task") -> None:
         """Insert a new task into this list."""
         # Get next free short id
         task.local_id = len(self.tasks)
@@ -76,18 +73,16 @@ class TaskList(Base):
         log.debug("inserted %r into %r", task, self)
 
     @sqlorm.validates("name")
-    def _valid_name_length(self, key, name) -> str:
+    def _valid_name_length(self, cb_key: str, name: str) -> str:
         """Ensure new list name doesn't make message too long"""
-        _ = key
         new_length = len(name) + self._len_tasks()
         if new_length > DISCORD_MAX_CHARS:
             raise ValueError("List name would make message too long.")
         return name
 
     @sqlorm.validates("tasks")
-    def _valid_list_length(self, key, task) -> "Task":
+    def _valid_list_length(self, cb_key: str, task: 'Task') -> "Task":
         """Ensure list will not be too long when adding task."""
-        _ = key
         new_length = len(self) + len(task)
         if new_length > DISCORD_MAX_CHARS:
             raise ValueError("Task would make message too long")

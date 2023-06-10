@@ -34,7 +34,7 @@ class Option:
     """
 
     name: str
-    flags: tuple[str] = tuple()
+    flags: tuple[str, ...] = ()
     arguments: dict["str", Any] = dataclasses.field(default_factory=dict[str, Any])
     post_load: Callable[[Any], Any] | None = None
     required: bool = False
@@ -43,10 +43,10 @@ class Option:
 class Cfg(types.SimpleNamespace):
     """Holds a configuration"""
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         return hasattr(self, key)
 
-    def set(self, key: str, val: Any):
+    def set(self, key: str, val: Any) -> None:
         """Set value of key"""
         setattr(self, key, val)
 
@@ -54,7 +54,7 @@ class Cfg(types.SimpleNamespace):
         """Return value of attr key or default if not set"""
         return getattr(self, key, default)
 
-    def merge(self, other) -> Self:
+    def merge(self, other: Self) -> Self:
         """Returns merged namespace of other with this object.
 
         This sets for all attrs in other self.attr to the value in other. Any
@@ -64,7 +64,7 @@ class Cfg(types.SimpleNamespace):
             setattr(self, attr, val)
         return self
 
-    def transform(self, options: list[Option]):
+    def transform(self, options: list[Option]) -> None:
         """Applies transformations set in option.post_load to each member"""
         for option in options:
             if option.name in self and option.post_load is not None:
@@ -99,7 +99,7 @@ def get_cli_args(options: list[Option]) -> Cfg:
     return cfg
 
 
-def get_env_vars(options: list[Option], env_prefix: str | None = None):
+def get_env_vars(options: list[Option], env_prefix: str | None = None) -> Cfg:
     """Load env vars"""
     log.debug("Env: %s", os.environ)
     env_vars = Cfg()
@@ -129,7 +129,7 @@ def validate_required(options: list[Option], cfg: Cfg) -> None:
 
 
 def get_cfg(
-    options: list[Option], env_prefix: str | None = None, exit_on_error=True
+    options: list[Option], env_prefix: str | None = None, exit_on_error: bool=True
 ) -> Cfg:
     """Return a complete configuration from a list of options"""
     # load cli args first, so we can see if we are given an env file
@@ -141,7 +141,7 @@ def get_cfg(
     env_vars = get_env_vars(options, env_prefix)
 
     # Merge, overwritting dups by cli_args
-    cfg = env_vars.merge(cli_args)
+    cfg: Cfg = env_vars.merge(cli_args)
 
     # Make sure required options are loaded
     try:

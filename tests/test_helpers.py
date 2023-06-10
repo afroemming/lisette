@@ -16,7 +16,7 @@ from lisette.core.collections import MsgUpdate
 from tests.fixtures import db_session, dbglog, task_list, task_lists
 
 
-async def test_mk_list(db_session: sqlaio.AsyncSession):
+async def test_mk_list(db_session: sqlaio.AsyncSession) -> None:
     txt: str = await helpers.mk_list(0, "test", 55)
     lst: models.TaskList = await models.TaskList.lookup(db_session, 0, "test")
     assert lst.name == "test"
@@ -25,7 +25,7 @@ async def test_mk_list(db_session: sqlaio.AsyncSession):
     assert txt == "**test**\n"
 
 
-async def test_del_list(db_session: sqlaio.AsyncSession, task_lists):
+async def test_del_list(db_session: sqlaio.AsyncSession, task_lists) -> None:
     db_session.add_all(task_lists)
     await db_session.commit()
     await helpers.del_list(0, "list 1")
@@ -35,7 +35,7 @@ async def test_del_list(db_session: sqlaio.AsyncSession, task_lists):
     await models.TaskList.lookup(db_session, 1, "list 3")
 
 
-async def test_mk_task(db_session: sqlaio.AsyncSession):
+async def test_mk_task(db_session: sqlaio.AsyncSession) -> None:
     lst = models.TaskList("list 1", 0, msg_id=99)
     db_session.add(lst)
     await db_session.commit()
@@ -68,7 +68,7 @@ async def test_mk_task(db_session: sqlaio.AsyncSession):
 
 async def test_chk_task_one(
     db_session: sqlaio.AsyncSession, task_list: models.TaskList
-):
+) -> None:
     db_session.add(task_list)
     await db_session.commit()
     # must close to avoid using in memory objects that do not reflect db state
@@ -101,7 +101,7 @@ async def test_chk_task_one(
     assert up.content == correct
 
 
-async def test_del_task_one(db_session, task_list, dbglog):
+async def test_del_task_one(db_session, task_list, dbglog) -> None:
     db_session.add(task_list)
     await db_session.commit()
     await db_session.close()
@@ -131,7 +131,7 @@ async def test_del_task_one(db_session, task_list, dbglog):
     assert up.content == correct
 
 
-async def test_chk_task_many(db_session, task_list):
+async def test_chk_task_many(db_session, task_list) -> None:
     db_session.add(task_list)
     await db_session.commit()
     await db_session.close()
@@ -158,7 +158,7 @@ async def test_chk_task_many(db_session, task_list):
     assert update.content == correct
 
 
-async def test_del_task_many(db_session, task_list):
+async def test_del_task_many(db_session, task_list) -> None:
     db_session.add(task_list)
     await db_session.commit()
     await db_session.close()

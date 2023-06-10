@@ -12,7 +12,7 @@ from lisette.lib import util
 log = logging.getLogger(__name__)
 
 
-async def respond_all(ctx: dis.ApplicationContext, msgs: list[str]):
+async def respond_all(ctx: dis.ApplicationContext, msgs: list[str]) -> None:
     """Respond with a list of messages"""
     for msg in msgs:
         await ctx.respond(content=msg, ephemeral=True)
@@ -36,7 +36,7 @@ async def get_lists_info(guild_id: int, guild_name: str) -> list[str]:
 async def mk_list(guild_id: int, name: str, msg_id: int) -> str:
     """Make a new list"""
     async with SESSION() as session:
-        lst = models.TaskList(name, guild_id, msg_id=msg_id)
+        lst = models.TaskList(name=name, guild_id=guild_id, msg_id=msg_id)
         session.add(lst)
         msg = lst.pretty_print()
         await session.commit()
@@ -69,7 +69,7 @@ async def mk_task(guild_id: int, list_name: str, content: str) -> MsgUpdate:
     """Make new task, returning list msg id and new list txt"""
     async with SESSION() as sess:
         lst: models.TaskList = await models.TaskList.lookup(sess, guild_id, list_name)
-        tsk: models.Task = models.Task(content)
+        tsk: models.Task = models.Task(content=content)
         lst.insert(tsk)
         out = MsgUpdate(lst.msg_id, lst.pretty_print())
         await sess.commit()

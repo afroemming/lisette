@@ -1,7 +1,5 @@
 # Copyright (c) 2023 Amelia Froemming
 # SPDX-License-Identifier: MIT
-# pylint: skip-file
-
 import pytest
 import sqlalchemy as sql
 import sqlalchemy.exc as sqlexc
@@ -13,21 +11,21 @@ from lisette.core.database import SESSION
 from tests.fixtures import db_session, task_list, task_lists
 
 
-async def test_lookup_task_list(db_session: AsyncSession, task_list: models.TaskList):
+async def test_lookup_task_list(db_session: AsyncSession, task_list: models.TaskList) -> None:
     db_session.add(task_list)
     await db_session.commit()
     lst = await models.TaskList.lookup(db_session, 0, "list 1")
     assert lst.name == "list 1"
 
 
-async def test_lookup_task(db_session: AsyncSession, task_list):
+async def test_lookup_task(db_session: AsyncSession, task_list) -> None:
     db_session.add(task_list)
     await db_session.commit()
     tsk = await models.Task.lookup(db_session, 0, "list 1", 0)
     assert tsk.content == "do something"
 
 
-async def test_task_pretty_txt():
+async def test_task_pretty_txt() -> None:
     tsk = models.Task(content="do something")
     answer = "☐  {0}\n".format("do something")
     assert tsk.pretty_txt() == answer
@@ -35,19 +33,19 @@ async def test_task_pretty_txt():
 
 async def test_too_long_task_raises(
     db_session: AsyncSession, task_list: models.TaskList
-):
+) -> None:
     db_session.add(task_list)
     await db_session.commit()
     lst = await models.TaskList.lookup(db_session, 0, "list 1")
     tsk = models.Task("hi" * 3000)
     try:
         with pytest.raises(ValueError):
-            await lst.insert(db_session, tsk)
+            await lst.insert(tsk)
     except:
         await db_session.rollback()
 
 
-async def test_delete_task(db_session: AsyncSession, task_list: models.TaskList):
+async def test_delete_task(db_session: AsyncSession, task_list: models.TaskList) -> None:
     db_session.add(task_list)
     await db_session.commit()
     tsk = await models.Task.lookup(db_session, 0, "list 1", 1)
@@ -57,7 +55,7 @@ async def test_delete_task(db_session: AsyncSession, task_list: models.TaskList)
     assert tsk1.content == "do a third thing"
 
 
-async def test_guild_all(db_session: AsyncSession, task_lists: tuple[models.TaskList]):
+async def test_guild_all(db_session: AsyncSession, task_lists: tuple[models.TaskList]) -> None:
     db_session.add_all(task_lists)
     await db_session.commit()
     lsts = await models.TaskList.guild_all(db_session, 0)

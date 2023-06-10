@@ -27,7 +27,7 @@ class TasksCog(disc.Cog):
         self.bot = bot_
 
     @tasks_grp.command()
-    async def info(self, ctx: dis.ApplicationContext, list_name):
+    async def info(self, ctx: dis.ApplicationContext, list_name: str) -> None:
         """Print info about a list and it's tasks."""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")
@@ -41,7 +41,7 @@ class TasksCog(disc.Cog):
             await ctx.respond(msg, ephemeral=True)
 
     @tasks_grp.command()
-    async def new(self, ctx: dis.ApplicationContext, list_name, content):
+    async def new(self, ctx: dis.ApplicationContext, list_name: str, content: str) -> None:
         """Add a new task to a list"""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")
@@ -62,8 +62,8 @@ class TasksCog(disc.Cog):
         "positions",
         str,
         help="A whitespace seperated list of integers. Ie.: '1 2 3'. Indexed from zero",
-    )
-    async def del_(self, ctx: dis.ApplicationContext, list_name: str, positions: str):
+    ) # type: ignore
+    async def del_(self, ctx: dis.ApplicationContext, list_name: str, positions: str) -> None:
         """Delete a task."""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")
@@ -94,8 +94,8 @@ class TasksCog(disc.Cog):
         "positions",
         str,
         help="A whitespace seperated list of integers. Ie.: '1 2 3'. Indexed from zero",
-    )
-    async def chk(self, ctx: dis.ApplicationContext, list_name: str, positions: str):
+    ) # type: ignore
+    async def chk(self, ctx: dis.ApplicationContext, list_name: str, positions: str) -> None:
         """Check or uncheck tasks with given positions"""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")

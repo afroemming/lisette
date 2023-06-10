@@ -15,7 +15,7 @@ SESSION: sqlaio.async_sessionmaker[sqlaio.AsyncSession] = sqlaio.async_sessionma
 ENGINE: sqlaio.AsyncEngine | None = None
 
 
-async def initalize(path, debug=False):
+async def initalize(path: str, debug: bool = False) -> sqlaio.AsyncEngine:
     """Make connection manager to database at a path.
 
     Path is of the style ('/path'), that is, prefixed with a /.

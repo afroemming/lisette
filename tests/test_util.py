@@ -6,7 +6,7 @@ import pytest
 from lisette.lib import util
 
 
-def test_split_len():
+def test_split_len() -> None:
     s = "aabbcc"
     t = util.split_len(s, 2)
     assert t[0] == "aa"
