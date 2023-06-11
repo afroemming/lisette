@@ -4,18 +4,14 @@ VENV           = .venv
 VENV_PYTHON    = $(VENV)/bin/python
 
 # tests
-venv:
-	python3.11 -m venv $(VENV)
-
 install:
-	$(MAKE) venv
-	$(VENV_PYTHON) -m pip install -e .[dev]
+	poetry install --with dev
 
 test:
-	$(VENV_PYTHON) -m pytest tests/
+	poetry run python -m pytest tests/
 
 run:
-	$(VENV_PYTHON) -m lisette --env_file .env
+	poetry run -m lisette --env-file .env
 
 run-debug:
-	LISETTE_DEBUG=1 $(VENV_PYTHON) -m lisette --env_file=.env
+	poetry run -m lisette --env-file=.env --log-level DEBUG
