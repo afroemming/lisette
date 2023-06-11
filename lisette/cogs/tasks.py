@@ -33,8 +33,13 @@ class TasksCog(disc.Cog):
         if ctx.guild is None:
             await ctx.respond("Inappropriate context")
             return
-        txt = await helpers.get_edit_txt(ctx.guild.id, list_name)
-        log.debug(txt)
+        try:
+            txt = await helpers.get_edit_txt(ctx.guild.id, list_name)
+        except sqlexc.NoResultFound as exc:
+            msg = f"Can't find list '{list_name}' in '{ctx.guild.name}'"
+            log.warning("tasks.edit: %s", msg)
+            await ctx.respond(content=msg, ephemeral=True)
+
         modal = modals.TasksEdit(
             title=f"Edit '{list_name}'", txt=txt, list_name=list_name
         )
