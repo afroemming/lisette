@@ -15,3 +15,6 @@ run:
 
 run-debug:
 	poetry run -m lisette --env-file=.env --log-level DEBUG
+
+build:
+	docker compose build

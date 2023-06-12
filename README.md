@@ -36,8 +36,14 @@ All can be suffixed by '_FILE" to lookup value from a file given a path.
 * `LISETTE_TOKEN`: (required) Discord token for bot account
 * `LISETTE_LOG_LEVEL`: (optional) Log level. Valid options: DEBUG, INFO, WARNING, CRITICAL 
 
-### CLI ARGS
+### CLI Args
 * --log-level [str]: As like above
 * --token [str]: As like above
 * --db-url [path]: As like above
 * --env-file [path]: Load options from an env file at path. 
+
+## Scopes and permissions
+Lisette requires the bot and applications.command scope, and send messages permission.
+
+## Privacy
+See [Privacy policy](docs/PRIVACY.md)
