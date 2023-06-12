@@ -28,6 +28,7 @@ class TasksCog(disc.Cog):
         self.bot = bot_
 
     @tasks_grp.command(description="Edit all of a list tasks in a pop-up dialog")  # type: ignore
+    @dis.guild_only()  # type: ignore
     @dis.option("list_name", str, help="List to edit tasks of.")  # type: ignore
     async def edit(self, ctx: dis.ApplicationContext, list_name):
         if ctx.guild is None:
@@ -47,6 +48,7 @@ class TasksCog(disc.Cog):
         await ctx.send_modal(modal)
 
     @tasks_grp.command()
+    @dis.guild_only()  # type: ignore
     @dis.option("list_name", str, help="Name of list to print task info for")  # type: ignore
     async def info(self, ctx: dis.ApplicationContext, list_name: str) -> None:
         """Print info about a list and it's tasks."""
@@ -62,6 +64,7 @@ class TasksCog(disc.Cog):
             await ctx.respond(msg, ephemeral=True)
 
     @tasks_grp.command(description="Add a new task to a list")
+    @dis.guild_only()  # type: ignore
     @dis.option("list_name", str, help="Name of list to add task to.")  # type: ignore
     @dis.option("content", str, help="Text to put with task.")  # type: ignore
     async def new(
@@ -83,6 +86,7 @@ class TasksCog(disc.Cog):
         await ctx.respond("Task added :-)", ephemeral=True)
 
     @tasks_grp.command(name="del")
+    @dis.guild_only()  # type: ignore
     @dis.option(
         "positions",
         str,
@@ -117,6 +121,7 @@ class TasksCog(disc.Cog):
         await ctx.respond("Task deleted :-)")
 
     @tasks_grp.command()
+    @dis.guild_only()  # type: ignore
     @dis.option(
         "positions",
         str,

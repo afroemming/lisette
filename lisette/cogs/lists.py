@@ -24,6 +24,7 @@ class ListsCog(disc.Cog):
         self.bot = bot_
 
     @lists_grp.command()
+    @dis.guild_only()  # type: ignore
     async def info(self, ctx: dis.ApplicationContext) -> None:
         """List all lists in this guild."""
         if ctx.guild is None:
@@ -32,16 +33,23 @@ class ListsCog(disc.Cog):
         await helpers.respond_all(ctx, msgs)
 
     @lists_grp.command()
+    @dis.guild_only()  # type: ignore
     async def new(self, ctx: dis.ApplicationContext, name: str) -> None:
         """Make a new list in current channel."""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild id.")
+        if not ctx.channel.can_send(dis.Message):
+            await ctx.respond(
+                "Sorry, I can't send messages in this channel :-(", ephemeral=True
+            )
+            return
         msg: dis.Message = await ctx.send("Making list...")
         txt: str = await helpers.mk_list(ctx.guild.id, name, msg.id)
         await msg.edit(content=txt)
         await ctx.respond("Made list :-)", ephemeral=True)
 
     @lists_grp.command(name="del")
+    @dis.guild_only()  # type: ignore
     async def del_(self, ctx: dis.ApplicationContext, name: str) -> None:
         """Delete the list 'name' in current guild."""
         if ctx.guild_id is None:
@@ -58,11 +66,11 @@ class ListsCog(disc.Cog):
         await ctx.respond(f"Deleted '{name}'.", ephemeral=True)
 
     async def cog_command_error(
-        self, ctx: dis.ApplicationContext, error: Exception
+        self, ctx: dis.ApplicationContext, exc: Exception
     ) -> NoReturn:
-        log.exception("Unhandled exception:", exc_info=error)
+        log.exception("Unhandled exception:", exc_info=exc)
         await ctx.respond(
-            f"There was an error while doing a command ({ctx.command}): {type(error)}",
+            f"There was an error while doing a command ({ctx.command}): {str(exc)}",
             ephemeral=True,
         )
-        raise error
+        raise exc
