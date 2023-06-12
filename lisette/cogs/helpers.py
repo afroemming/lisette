@@ -39,6 +39,8 @@ async def get_lists_info(guild_id: int, guild_name: str) -> list[str]:
 async def mk_list(guild_id: int, name: str, msg_id: int) -> str:
     """Make a new list"""
     async with SESSION() as session:
+        if await is_name_in_guild(session, guild_id, name):
+            raise ValueError('Name is already used for a list in this guild.')
         lst = models.TaskList(name=name, guild_id=guild_id, msg_id=msg_id)
         session.add(lst)
         msg = lst.pretty_print()
@@ -166,3 +168,21 @@ async def put_edit(guild_id: int, list_name: str, full_txt: str) -> MsgUpdate:
         await session.refresh(lst)
         update_msg = MsgUpdate(lst.msg_id, lst.pretty_print())
     return update_msg
+
+async def put_list_edit(guild_id: int, name: str, new_name: str) -> MsgUpdate:
+    """Edit a list name, returning new list text."""
+    async with SESSION() as session:
+        if await is_name_in_guild(session, guild_id, new_name):
+            raise ValueError('Name is already used for a list in this guild.')
+        lst = await models.TaskList.lookup(session, guild_id, name)
+        lst.name = new_name
+        await session.commit()
+        update_msg = MsgUpdate(lst.msg_id, lst.pretty_print())
+        
+    return update_msg
+
+
+async def is_name_in_guild(session: sqlaio.AsyncSession, guild_id: int, name: str) -> bool:
+    lsts = await models.TaskList.guild_all(session, guild_id)
+    names = [x.name for x in lsts]
+    return name in names

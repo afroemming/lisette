@@ -232,3 +232,25 @@ async def test_put_edit(db_session, task_list, dbglog):
     assert tasks[0].content == "do a"
     assert tasks[1].content == "do b"
     assert tasks[2].content == "do c"
+
+async def is_name_in_guild(db_session, task_lists):
+    db_session.add_all(task_lists)
+    await db_session.commit()
+    await db_session.close()
+
+    assert (await helpers.is_name_in_guild(db_session, 0, 'list 1'))
+    assert (await helpers.is_name_in_guild(db_session, 0, 'list 2'))
+    assert not (await helpers.is_name_in_guild(db_session, 0, 'aaaaa'))
+
+async def test_put_list_edit(db_session, task_lists):
+    db_session.add_all(task_lists)
+    await db_session.commit()
+    await db_session.close()
+
+    await helpers.put_list_edit(0, 'list 1', 'list a')
+    lsts = await models.TaskList.guild_all(db_session, 0)
+    names = [x.name for x in lsts]
+
+    assert 'list a' in names
+    assert 'list 2' in names
+    assert not 'list 1' in names

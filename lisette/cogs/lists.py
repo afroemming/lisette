@@ -65,6 +65,28 @@ class ListsCog(disc.Cog):
         await msg.delete()
         await ctx.respond(f"Deleted '{name}'.", ephemeral=True)
 
+    @lists_grp.command()
+    @dis.guild_only()
+    @dis.option('name', str, description="Current name of the list.") # type:ignore
+    @dis.option('new_name', str, description="New name to use.") # type:ignore
+    async def edit(self, ctx: dis.ApplicationContext, name: str, new_name: str) -> None:
+        if ctx.guild is None:
+            raise TypeError('Invalid context.')
+        try:
+            update = await helpers.put_list_edit(ctx.guild.id, name, new_name)
+        except ValueError:
+            await ctx.respond(f"There already is a list name {new_name} in this guild :-(")
+            return
+        msg = ctx.bot.get_message(update.id)
+        if msg is None:
+            log.error("Msg lookup failed. List name: '%s', got id '%s", name, update.id)
+            await ctx.respond(f"Couldn't get list message to edit. Rolling back. . . :-(")
+            await helpers.put_list_edit(ctx.guild.id, name, name)
+            raise TypeError
+        await msg.edit(content=update.content)
+        await ctx.respond('Name updated :-)')
+        
+
     async def cog_command_error(
         self, ctx: dis.ApplicationContext, exc: Exception
     ) -> NoReturn:
