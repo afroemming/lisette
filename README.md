@@ -11,7 +11,7 @@ Commands are:
 * `/lists info` - List all lists in current guild.
 
 * `/tasks edit [list]` - Gives a dialog window to edit all of a list tasks.
-* `/tasks add [list] [content]` - Add a single task.
+* `/tasks new [list] [content]` - Add a single task.
 * `/tasks del [list] [nums]` - Delete tasks [nums], where nums is a string of space seperated positions, zero-indexed. Ie. '0 1 3'
 * `/tasks chk [list] [nums]` - Mark tasks as checked, arguments are as in del.
 
