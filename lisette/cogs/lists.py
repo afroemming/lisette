@@ -33,6 +33,7 @@ class ListsCog(disc.Cog):
         await helpers.respond_all(ctx, msgs)
 
     @lists_grp.command()
+    @dis.option('name', str, description='Name of new list.') # type: ignore
     @dis.guild_only()  # type: ignore
     async def new(self, ctx: dis.ApplicationContext, name: str) -> None:
         """Make a new list in current channel."""
@@ -49,6 +50,7 @@ class ListsCog(disc.Cog):
         await ctx.respond("Made list :-)", ephemeral=True)
 
     @lists_grp.command(name="del")
+    @dis.option('name', str, description="Name of list to delete", autocomplete=helpers.autocomplete_list) # type:ignore
     @dis.guild_only()  # type: ignore
     async def del_(self, ctx: dis.ApplicationContext, name: str) -> None:
         """Delete the list 'name' in current guild."""
@@ -67,7 +69,7 @@ class ListsCog(disc.Cog):
 
     @lists_grp.command()
     @dis.guild_only()
-    @dis.option('name', str, description="Current name of the list.") # type:ignore
+    @dis.option('name', str, description="Current name of the list.", autocomplete=helpers.autocomplete_list) # type:ignore
     @dis.option('new_name', str, description="New name to use.") # type:ignore
     async def edit(self, ctx: dis.ApplicationContext, name: str, new_name: str) -> None:
         if ctx.guild is None:
@@ -75,16 +77,25 @@ class ListsCog(disc.Cog):
         try:
             update = await helpers.put_list_edit(ctx.guild.id, name, new_name)
         except ValueError:
-            await ctx.respond(f"There already is a list name {new_name} in this guild :-(")
+            await ctx.respond(f"There already is a list name {new_name} in this guild :-(", ephemeral=True)
             return
-        msg = ctx.bot.get_message(update.id)
-        if msg is None:
-            log.error("Msg lookup failed. List name: '%s', got id '%s", name, update.id)
-            await ctx.respond(f"Couldn't get list message to edit. Rolling back. . . :-(")
-            await helpers.put_list_edit(ctx.guild.id, name, name)
-            raise TypeError
+        except sqlexc.NoResultFound:
+            await ctx.respond(f"Couldn't find a list with that name. Did you spell it correctly?", ephemeral=True)
+            return
+        try:
+            msg = await ctx.fetch_message(update.id)
+        except dis.Forbidden:
+            await ctx.respond(f"I don't have permission to edit the message this list is in? (Rolling back.)", ephemeral=True)
+            await helpers.put_list_edit(ctx.guild.id, new_name, name)
+            return
+        except dis.NotFound:
+            await ctx.respond(f"Couldn't find list message. Are you in the same channel as it? (Rolling back.)", ephemeral=True)
+            await helpers.put_list_edit(ctx.guild.id, new_name, name)
+            return
+
+
         await msg.edit(content=update.content)
-        await ctx.respond('Name updated :-)')
+        await ctx.respond('Name updated :-)', ephemeral=True)
         
 
     async def cog_command_error(

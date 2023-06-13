@@ -186,3 +186,16 @@ async def is_name_in_guild(session: sqlaio.AsyncSession, guild_id: int, name: st
     lsts = await models.TaskList.guild_all(session, guild_id)
     names = [x.name for x in lsts]
     return name in names
+
+async def get_list_names(ctx: dis.AutocompleteContext) -> list[str]:
+    if ctx.interaction.guild is None:
+        return []
+    guild_id = ctx.interaction.guild.id
+    async with SESSION() as session:
+        names = list(await models.TaskList.guild_all_names(session, guild_id))
+        return names
+      
+
+
+
+autocomplete_list = autocomplete=dis.utils.basic_autocomplete(get_list_names)

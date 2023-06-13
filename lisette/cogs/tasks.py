@@ -29,57 +29,57 @@ class TasksCog(disc.Cog):
 
     @tasks_grp.command(description="Edit all of a list tasks in a pop-up dialog")  # type: ignore
     @dis.guild_only()  # type: ignore
-    @dis.option("list_name", str, help="List to edit tasks of.")  # type: ignore
-    async def edit(self, ctx: dis.ApplicationContext, list_name):
+    @dis.option("name", str, help="List to edit tasks of.", autocomplete=helpers.autocomplete_list)  # type: ignore
+    async def edit(self, ctx: dis.ApplicationContext, name):
         if ctx.guild is None:
             await ctx.respond("Inappropriate context")
             return
         try:
-            txt = await helpers.get_edit_txt(ctx.guild.id, list_name)
+            txt = await helpers.get_edit_txt(ctx.guild.id, name)
         except sqlexc.NoResultFound as exc:
-            msg = f"Can't find list '{list_name}' in '{ctx.guild.name}'"
-            log.warning("Lookup failed, guild %s, name %s", ctx.guild.id, list_name)
+            msg = f"Can't find list '{name}' in '{ctx.guild.name}'"
+            log.warning("Lookup failed, guild %s, name %s", ctx.guild.id, name)
             await ctx.respond(content=msg, ephemeral=True)
             return
 
         modal = modals.TasksEdit(
-            title=f"Edit '{list_name}'", txt=txt, list_name=list_name
+            title=f"Edit '{name}'", txt=txt, list_name=name
         )
         await ctx.send_modal(modal)
 
     @tasks_grp.command()
     @dis.guild_only()  # type: ignore
-    @dis.option("list_name", str, help="Name of list to print task info for")  # type: ignore
-    async def info(self, ctx: dis.ApplicationContext, list_name: str) -> None:
+    @dis.option("name", str, description="Name of list to print task info for", autocomplete=helpers.autocomplete_list)  # type: ignore
+    async def info(self, ctx: dis.ApplicationContext, name: str) -> None:
         """Print info about a list and it's tasks."""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")
         try:
-            msgs: list[str] = await helpers.get_tasks_info(ctx.guild.id, list_name)
+            msgs: list[str] = await helpers.get_tasks_info(ctx.guild.id, name)
         except sqlexc.NoResultFound:
-            log.warning("Lookup failed, guild %s, name %s", ctx.guild.id, list_name)
-            await ctx.respond(f"Couldn't find list {list_name}", ephemeral=True)
+            log.warning("Lookup failed, guild %s, name %s", ctx.guild.id, name)
+            await ctx.respond(f"Couldn't find list {name}", ephemeral=True)
             return
         for msg in msgs:
             await ctx.respond(msg, ephemeral=True)
 
     @tasks_grp.command(description="Add a new task to a list")
     @dis.guild_only()  # type: ignore
-    @dis.option("list_name", str, help="Name of list to add task to.")  # type: ignore
-    @dis.option("content", str, help="Text to put with task.")  # type: ignore
+    @dis.option("name", str, description="Name of list to add task to.", autocomplete=helpers.autocomplete_list)  # type: ignore
+    @dis.option("content", str, description="Text to put with task.")  # type: ignore
     async def new(
-        self, ctx: dis.ApplicationContext, list_name: str, content: str
+        self, ctx: dis.ApplicationContext, name: str, content: str
     ) -> None:
         """Add a new task to a list"""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")
         try:
             msg_update: MsgUpdate = await helpers.mk_task(
-                ctx.guild.id, list_name, content
+                ctx.guild.id, name, content
             )
         except sqlexc.NoResultFound:
-            log.warning("Lookup failed, guild %s, name %s", ctx.guild.id, list_name)
-            await ctx.respond(f"Couldn't find list {list_name}", ephemeral=True)
+            log.warning("Lookup failed, guild %s, name %s", ctx.guild.id, name)
+            await ctx.respond(f"Couldn't find list {name}", ephemeral=True)
             return
         msg = await ctx.fetch_message(msg_update.id)
         await msg.edit(content=msg_update.content)
@@ -87,13 +87,14 @@ class TasksCog(disc.Cog):
 
     @tasks_grp.command(name="del")
     @dis.guild_only()  # type: ignore
+    @dis.option('name', str, description='Name of list to delete tasks from', autocomplete=helpers.autocomplete_list) # type: ignore
     @dis.option(
         "positions",
         str,
         help="A whitespace seperated list of integers. Ie.: '1 2 3'. Indexed from zero",
     )  # type: ignore
     async def del_(
-        self, ctx: dis.ApplicationContext, list_name: str, positions: str
+        self, ctx: dis.ApplicationContext, name: str, positions: str
     ) -> None:
         """Delete a task."""
         if ctx.guild is None:
@@ -106,16 +107,16 @@ class TasksCog(disc.Cog):
             return
 
         try:
-            await helpers.del_tasks(ctx.guild.id, list_name, *local_ids)
+            await helpers.del_tasks(ctx.guild.id, name, *local_ids)
         except sqlexc.NoResultFound:
             log.warning(
                 "Lookup failed, guild %s, name %s, pos %s",
                 ctx.guild.id,
-                list_name,
+                name,
                 local_ids,
             )
             await ctx.respond(
-                f"Couldn't find task in {list_name} w/ positions {local_ids}"
+                f"Couldn't find task in {name} w/ positions {local_ids}"
             )
             return
         await ctx.respond("Task deleted :-)")
@@ -127,8 +128,9 @@ class TasksCog(disc.Cog):
         str,
         help="A whitespace seperated list of integers. Ie.: '1 2 3'. Indexed from zero",
     )  # type: ignore
+    @dis.option('name', str, description='Name of list to check tasks on.', autocomplete=helpers.autocomplete_list) # type: ignore
     async def chk(
-        self, ctx: dis.ApplicationContext, list_name: str, positions: str
+        self, ctx: dis.ApplicationContext, name: str, positions: str
     ) -> None:
         """Check or uncheck tasks with given positions"""
         if ctx.guild is None:
@@ -142,7 +144,7 @@ class TasksCog(disc.Cog):
 
         try:
             msg_update: MsgUpdate = await helpers.check_tasks(
-                ctx.guild.id, list_name, *local_ids
+                ctx.guild.id, name, *local_ids
             )
         except ValueError as exc:
             log.warning("Caught exception", exc_info=exc)

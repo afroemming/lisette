@@ -63,3 +63,11 @@ async def test_guild_all(db_session: AsyncSession, task_lists: tuple[models.Task
     assert "list 1" in names
     assert "list 2" in names
     assert not "list 3" in names
+
+async def test_guild_all_names(db_session: AsyncSession, task_lists: tuple[models.TaskList]) -> None:
+    db_session.add_all(task_lists)
+    await db_session.commit()
+    names = await models.TaskList.guild_all_names(db_session, 0)
+    assert "list 1" in names
+    assert "list 2" in names
+    assert not "list 3" in names

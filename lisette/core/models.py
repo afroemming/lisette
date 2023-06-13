@@ -123,6 +123,15 @@ class TaskList(Base):
         """Return a Sequence of all TaskLists in guild."""
         stmt = sql.select(cls).where(cls.guild_id == guild_id)
         return (await session.scalars(stmt)).all()
+    
+    @classmethod
+    async def guild_all_names(
+            cls, session: sqlaio.AsyncSession, guild_id: int
+    ) -> Sequence[str]:
+        """Return a sequence of names of lists in guild."""
+        stmt = sql.select(cls.name).where(cls.guild_id == guild_id)
+        return (await session.scalars(stmt)).all()
+
 
     def __len__(self) -> int:
         sum_ = 0
