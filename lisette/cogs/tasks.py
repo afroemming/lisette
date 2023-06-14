@@ -96,7 +96,7 @@ class TasksCog(disc.Cog):
     async def del_(
         self, ctx: dis.ApplicationContext, name: str, positions: str
     ) -> None:
-        """Delete a task."""
+        """Delete tasks."""
         if ctx.guild is None:
             raise TypeError("Couldn't get guild.")
 
@@ -107,7 +107,8 @@ class TasksCog(disc.Cog):
             return
 
         try:
-            await helpers.del_tasks(ctx.guild.id, name, *local_ids)
+            status = await helpers.del_tasks(ctx.guild.id, name, *local_ids)
+            update: MsgUpdate = status[2]
         except sqlexc.NoResultFound:
             log.warning(
                 "Lookup failed, guild %s, name %s, pos %s",
@@ -119,7 +120,10 @@ class TasksCog(disc.Cog):
                 f"Couldn't find task in {name} w/ positions {local_ids}"
             )
             return
-        await ctx.respond("Task deleted :-)")
+        
+        msg: dis.Message = await ctx.fetch_message(update.id)
+        await msg.edit(content=update.content)
+        await ctx.respond(f"Tasks {status[0]} deleted. Positions {status[1]} ignored :-)")
 
     @tasks_grp.command()
     @dis.guild_only()  # type: ignore

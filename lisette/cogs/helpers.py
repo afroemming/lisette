@@ -81,28 +81,31 @@ async def mk_task(guild_id: int, list_name: str, content: str) -> MsgUpdate:
     return out
 
 
-async def del_tasks(guild_id: int, list_name: str, *positions: int) -> MsgUpdate:
+async def del_tasks(guild_id: int, list_name: str, *positions: int) -> tuple[list[int], list[int], MsgUpdate]:
     """Delete a task."""
     if min(positions) < 0:
         raise ValueError(f"Invalid minimum position {min(positions)}. Must be > 0.")
     async with SESSION() as sess:
         lst: models.TaskList = await models.TaskList.lookup(sess, guild_id, list_name)
-        tasks: Sequence[models.Task] = await lst.awaitable_attrs.tasks
-        max_pos = len(tasks) - 1
-        if max(positions) > max_pos:
-            raise ValueError(
-                f"Invalid max position {max(positions)}. Must be < {max_pos}"
-            )
-
+        deleted: list[int] = []
+        ignored: list[int] = []
         # Delete each task[pos] for pos is positions
         # convert to set to avoid duplicates
-        for pos in set(positions):
+        for pos in sorted(set(positions), reverse=True):
             log.debug("del task pos: %s", pos)
-            await tasks[pos].delete(sess)
+            try:
+                del lst.tasks[pos]
+            except IndexError:
+                ignored.append(pos)
+                continue
+            deleted.append(pos)
+            lst.renumber()
 
+                
         await sess.commit()
         await sess.refresh(lst)
-        out = MsgUpdate(lst.msg_id, lst.pretty_print())
+        update = MsgUpdate(lst.msg_id, lst.pretty_print())
+        out = (deleted, ignored, update)
         await sess.commit()
     return out
 
@@ -160,13 +163,13 @@ def put_line(line: str) -> models.Task:
 async def put_edit(guild_id: int, list_name: str, full_txt: str) -> MsgUpdate:
     async with SESSION() as session:
         lst = await models.TaskList.lookup(session, guild_id, list_name)
-        await lst.clear(session)
+        lst.clear()
+        await session.flush()
         for line in full_txt.splitlines():
             task = put_line(line)
             lst.insert(task)
-        await session.commit()
-        await session.refresh(lst)
         update_msg = MsgUpdate(lst.msg_id, lst.pretty_print())
+        await session.commit()
     return update_msg
 
 async def put_list_edit(guild_id: int, name: str, new_name: str) -> MsgUpdate:
