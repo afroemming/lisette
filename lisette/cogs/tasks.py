@@ -158,3 +158,18 @@ class TasksCog(disc.Cog):
         msg: dis.Message = await ctx.fetch_message(msg_update.id)
         await msg.edit(content=msg_update.content)
         await ctx.respond("List updated :-)", ephemeral=True)
+
+    @tasks_grp.command(
+        guild_only=True, description="Deletes all tasks in a list that are checked."
+    )
+    @dis.option('name', str, description="Name of list to delete tasks from.") # type: ignore
+    async def delchk(
+        self,
+        ctx: dis.ApplicationContext,
+        name: str
+    ) -> None:
+        if ctx.guild is None:
+            raise ValueError
+        update = await helpers.del_checked(ctx.guild.id, name)
+        await helpers.send_update(ctx, update)
+        await ctx.respond('All done :-)')

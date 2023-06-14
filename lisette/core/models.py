@@ -88,7 +88,7 @@ class TaskList(Base):
         del self.tasks[:]
 
     def renumber(self) -> None:
-        """Delete a tasks and renumber all other tasks with correct position"""
+        """Sync task local ids with list position"""
         for i, task in enumerate(self.tasks):
             task.local_id = i
 

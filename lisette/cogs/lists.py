@@ -24,7 +24,7 @@ class ListsCog(disc.Cog):
         self.bot = bot_
 
     @lists_grp.command()
-    @dis.guild_only()  # type: ignore
+    @dis.guild_only()  
     async def info(self, ctx: dis.ApplicationContext) -> None:
         """List all lists in this guild."""
         if ctx.guild is None:

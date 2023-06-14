@@ -255,3 +255,23 @@ async def test_put_list_edit(db_session, task_lists):
     assert 'list a' in names
     assert 'list 2' in names
     assert not 'list 1' in names
+
+async def test_del_checked(db_session, task_list, dbglog):
+    task_list.tasks[0].checked = True
+    db_session.add(task_list)
+    await db_session.commit()
+    await db_session.close()
+
+    msg = await helpers.del_checked(0, 'list 1')
+    assert msg.content == ''.join((
+        models.TaskList.NAME_FRMT.format('list 1'),
+        models.Task.UNCHECKED_FRMT.format('do something else'),
+        models.Task.UNCHECKED_FRMT.format('do a third thing')))
+
+    lst = await models.TaskList.lookup(db_session, 0, 'list 1')
+    assert lst.tasks[0].content == 'do something else'
+    assert lst.tasks[0].local_id == 0
+    assert lst.tasks[1].content == 'do a third thing'
+    assert lst.tasks[1].local_id == 1
+
+

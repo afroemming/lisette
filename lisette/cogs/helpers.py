@@ -198,6 +198,20 @@ async def get_list_names(ctx: dis.AutocompleteContext) -> list[str]:
         names = list(await models.TaskList.guild_all_names(session, guild_id))
         return names
       
+async def del_checked(guild_id: int, name: str) -> MsgUpdate:
+    async with SESSION() as session:
+        lst = await models.TaskList.lookup(session, guild_id, name)
+        lst.tasks = [t for t in lst.tasks if not t.checked]
+        
+        lst.renumber()
+        await session.commit()
+        update = MsgUpdate(lst.msg_id, lst.pretty_print())
+    return update                
+
+async def send_update(ctx: dis.ApplicationContext, update: MsgUpdate) -> None:
+    """Update a list output message"""
+    msg: dis.Message = await ctx.fetch_message(update.id)
+    await msg.edit(content=update.content)
 
 
 
