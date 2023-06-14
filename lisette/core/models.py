@@ -46,7 +46,7 @@ class TaskList(Base):
     tasks: sqlorm.Mapped[List["Task"]] = sqlorm.relationship(
         default_factory=list,
         back_populates="parent_list",
-        cascade="save-update, merge, delete, delete-orphan",
+        cascade="save-update, merge, expunge, delete",
         order_by="Task.local_id",
     )
     msg_id: sqlorm.Mapped[int] = sqlorm.mapped_column(default=None)
@@ -73,12 +73,25 @@ class TaskList(Base):
         task.local_id = len(self.tasks)
         self.tasks.append(task)
         log.debug("inserted %r into %r", task, self)
-
-    async def clear(self, session: sqlaio.AsyncSession) -> None:
-        """Clear all tasks from self"""
-        tasks = await self.awaitable_attrs.tasks
+    
+    def insert_all(self, *tasks: "Task") -> None:
+        """Insert serveral new tasks into this list."""
+        # Get next free short id
         for task in tasks:
-            await session.delete(task)
+            task.local_id = len(self.tasks)
+            self.tasks.append(task)
+            log.debug("inserted %r into %r", task, self)
+
+
+    def clear(self) -> None:
+        """Clear all tasks from self"""
+        del self.tasks[:]
+
+    def renumber(self) -> None:
+        """Delete a tasks and renumber all other tasks with correct position"""
+        for i, task in enumerate(self.tasks):
+            task.local_id = i
+
 
     @sqlorm.validates("name")
     def _valid_name_length(self, cb_key: str, name: str) -> str:
@@ -183,33 +196,33 @@ class Task(Base):
         """Returns content formatted for display"""
         return Task._format_content(self.content, self.checked)
 
-    async def delete(self, session: sqlaio.AsyncSession, commit: bool = False) -> None:
-        """Deletes a Task from its parent and renumbers Tasks w/ higher local_id
+    # async def delete(self, session: sqlaio.AsyncSession, commit: bool = False) -> None:
+    #     """Deletes a Task from its parent and renumbers Tasks w/ higher local_id
 
-        If commit = True, the changes are committed to database. If false, the session passed
-        must be commited later or changes will be lost.
-        """
+    #     If commit = True, the changes are committed to database. If false, the session passed
+    #     must be commited later or changes will be lost.
+    #     """
 
-        # Get list of parent list tasks in order
-        log.debug("Trying to get tasks in same list")
-        parent = await session.get(TaskList, self.parent_list_id)
-        del_task_id = self.id
-        if parent is None:
-            raise TypeError("Task has no parent.")
+    #     # Get list of parent list tasks in order
+    #     log.debug("Trying to get tasks in same list")
+    #     parent = await session.get(TaskList, self.parent_list_id)
+    #     del_task_id = self.id
+    #     if parent is None:
+    #         raise TypeError("Task has no parent.")
 
-        await session.delete(self)
-        log.debug("DB del done.")
+    #     await session.delete(self)
+    #     log.debug("DB del done.")
 
-        # Renumber tasks with local_ids above this one's
-        tasks: list["Task"] = await parent.awaitable_attrs.tasks
-        tasks.sort(key=lambda x: x.local_id)  # type: ignore
-        for task in tasks[del_task_id:]:
-            if task.local_id is None:
-                raise TypeError
-            task.local_id -= 1
+    #     # Renumber tasks with local_ids above this one's
+    #     tasks: list["Task"] = await parent.awaitable_attrs.tasks
+    #     tasks.sort(key=lambda x: x.local_id)  # type: ignore
+    #     for task in tasks[del_task_id:]:
+    #         if task.local_id is None:
+    #             raise TypeError
+    #         task.local_id -= 1
 
-        if commit:
-            await session.commit()
+    #     if commit:
+    #         await session.commit()
 
     # @sqlorm.validates("content")
     # def _content_edit(self, key, content) -> str:

@@ -108,7 +108,8 @@ async def test_del_task_one(db_session, task_list, dbglog) -> None:
 
     list_name = "list 1"
 
-    up: MsgUpdate = await helpers.del_tasks(0, "list 1", 1)
+    status = await helpers.del_tasks(0, "list 1", 1)
+    up = status[2]
 
     lst: models.TaskList = await models.TaskList.lookup(db_session, 0, "list 1")
     tasks: list[models.Task] = await lst.awaitable_attrs.tasks
@@ -158,13 +159,13 @@ async def test_chk_task_many(db_session, task_list) -> None:
     assert update.content == correct
 
 
-async def test_del_task_many(db_session, task_list) -> None:
+async def test_del_task_many(db_session, task_list, dbglog) -> None:
     db_session.add(task_list)
     await db_session.commit()
     await db_session.close()
 
-    update: MsgUpdate = await helpers.del_tasks(0, "list 1", 0, 1, 2)
-
+    status: MsgUpdate = await helpers.del_tasks(0, "list 1", 0, 1, 2)
+    update = status[2]
     lst: models.TaskList = await models.TaskList.lookup(db_session, 0, "list 1")
     tasks: list[models.Task] = await lst.awaitable_attrs.tasks
 
