@@ -11,10 +11,10 @@ test:
 	poetry run python -m pytest tests/
 
 run:
-	poetry run -m lisette --env-file .env
+	poetry run python -m lisette --env-file .env
 
 run-debug:
-	poetry run -m lisette --env-file=.env --log-level DEBUG
+	poetry run python -m lisette --env-file=.env --log-level DEBUG
 
 build:
 	docker compose build

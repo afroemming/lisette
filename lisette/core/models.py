@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: MIT
 """ORM models for Lisette"""
 import logging
-from typing import List, Self, Sequence, Type
+from typing import Any, List, Optional, Self, Sequence, Type, TypeVar, overload
 
 import sqlalchemy as sql
 import sqlalchemy.ext.asyncio as sqlaio
 import sqlalchemy.orm as sqlorm
+
+T = TypeVar("T")
 
 DISCORD_MAX_CHARS = 2000
 LIST_NAME_MAX = 38  # To fit in modal title
@@ -48,6 +50,7 @@ class TaskList(Base):
         back_populates="parent_list",
         cascade="save-update, merge, expunge, delete",
         order_by="Task.local_id",
+        lazy="selectin",
     )
     msg_id: sqlorm.Mapped[int] = sqlorm.mapped_column(default=None)
 
@@ -73,7 +76,7 @@ class TaskList(Base):
         task.local_id = len(self.tasks)
         self.tasks.append(task)
         log.debug("inserted %r into %r", task, self)
-    
+
     def insert_all(self, *tasks: "Task") -> None:
         """Insert serveral new tasks into this list."""
         # Get next free short id
@@ -81,7 +84,6 @@ class TaskList(Base):
             task.local_id = len(self.tasks)
             self.tasks.append(task)
             log.debug("inserted %r into %r", task, self)
-
 
     def clear(self) -> None:
         """Clear all tasks from self"""
@@ -91,7 +93,6 @@ class TaskList(Base):
         """Sync task local ids with list position"""
         for i, task in enumerate(self.tasks):
             task.local_id = i
-
 
     @sqlorm.validates("name")
     def _valid_name_length(self, cb_key: str, name: str) -> str:
@@ -111,40 +112,67 @@ class TaskList(Base):
             raise ValueError("Task would make message too long")
         return task
 
+    @overload
     @classmethod
     async def lookup(
-        cls: Type[Self], session: sqlaio.AsyncSession, guild_id: int, name: str
+        cls, session: sqlaio.AsyncSession, guild_id: int, name: str
     ) -> Self:
-        """Returns TaskList matching guild_id & name if found.
+        ...
+
+    @overload
+    @classmethod
+    async def lookup(
+        cls, session: sqlaio.AsyncSession, guild_id: int
+    ) -> Sequence[Self]:
+        ...
+
+    @overload
+    @classmethod
+    async def lookup(
+        cls, session: sqlaio.AsyncSession, guild_id: int, name: str, attr: str
+    ) -> T:
+        ...
+
+    @overload
+    @classmethod
+    async def lookup(
+        cls, session: sqlaio.AsyncSession, guild_id: int, *, attr: str
+    ) -> Sequence[T]:
+        ...
+
+    @classmethod
+    async def lookup(
+        cls,
+        session: sqlaio.AsyncSession,
+        guild_id: int,
+        name: Optional[str] = None,
+        attr: Optional[str] = None,
+    ) -> Self | Sequence[Self] | Any | Sequence[Any]:
+        """Lookup TaskList objects
+
+        Arguments:
+            session: SQL session to use.
+            guild_id: Of list to lookup
+            name: Of list to lookup (required if not all)
+            load_tasks: Whether to load list's task objects
+            all: Whether to return a sequence of all in guild.
 
         Raises:
             sql.orm.exc.MultipleResultsFound
             sql.orm.exc.NoResultFound
+            ValueError
         """
-        stmt = (
-            sql.select(cls)
-            .where(cls.guild_id == guild_id)
-            .where(cls.name == name)
-            .options(sqlorm.selectinload(cls.tasks))
-        )
-        return (await session.scalars(stmt)).one()
+        if attr:
+            entity = getattr(cls, attr)
+        else:
+            entity = cls
 
-    @classmethod
-    async def guild_all(
-        cls: Type[Self], session: sqlaio.AsyncSession, guild_id: int
-    ) -> Sequence[Self]:
-        """Return a Sequence of all TaskLists in guild."""
-        stmt = sql.select(cls).where(cls.guild_id == guild_id)
-        return (await session.scalars(stmt)).all()
-    
-    @classmethod
-    async def guild_all_names(
-            cls, session: sqlaio.AsyncSession, guild_id: int
-    ) -> Sequence[str]:
-        """Return a sequence of names of lists in guild."""
-        stmt = sql.select(cls.name).where(cls.guild_id == guild_id)
-        return (await session.scalars(stmt)).all()
-
+        stmt = sql.select(entity).where(cls.guild_id == guild_id)
+        if name:
+            stmt = stmt.where(cls.name == name)
+            return (await session.scalars(stmt)).one()
+        else:
+            return (await session.scalars(stmt)).all()
 
     def __len__(self) -> int:
         sum_ = 0

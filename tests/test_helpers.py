@@ -12,7 +12,6 @@ import sqlalchemy.ext.asyncio as sqlaio
 
 from lisette.cogs import helpers
 from lisette.core import models
-from lisette.core.collections import MsgUpdate
 from tests.fixtures import db_session, dbglog, task_list, task_lists
 
 
@@ -39,6 +38,7 @@ async def test_mk_task(db_session: sqlaio.AsyncSession) -> None:
     lst = models.TaskList("list 1", 0, msg_id=99)
     db_session.add(lst)
     await db_session.commit()
+    await db_session.close()
 
     await helpers.mk_task(0, "list 1", "do a")
     await helpers.mk_task(0, "list 1", "do b")
@@ -62,12 +62,11 @@ async def test_mk_task(db_session: sqlaio.AsyncSession) -> None:
         )
     )
 
-    assert up.id == 99
-    assert up.content == correct
+    assert up == correct
 
 
 async def test_chk_task_one(
-    db_session: sqlaio.AsyncSession, task_list: models.TaskList
+    db_session: sqlaio.AsyncSession, task_list: models.TaskList, dbglog
 ) -> None:
     db_session.add(task_list)
     await db_session.commit()
@@ -75,7 +74,7 @@ async def test_chk_task_one(
     # when checking
     await db_session.close()
     lst_name = "list 1"
-    up: MsgUpdate = await helpers.check_tasks(0, lst_name, 1)
+    up: str = await helpers.check_tasks(0, lst_name, 1)
 
     tsks: list[models.Task] = [
         await models.Task.lookup(db_session, 0, lst_name, 0),
@@ -84,9 +83,9 @@ async def test_chk_task_one(
     ]
     pprint(tsks)
 
-    assert tsks[0].checked == False
-    assert tsks[1].checked == True
-    assert tsks[2].checked == False
+    assert not tsks[0].checked
+    assert tsks[1].checked
+    assert not tsks[2].checked
 
     correct = "".join(
         (
@@ -97,8 +96,7 @@ async def test_chk_task_one(
         )
     )
 
-    assert up.id == 0
-    assert up.content == correct
+    assert up == correct
 
 
 async def test_del_task_one(db_session, task_list, dbglog) -> None:
@@ -128,8 +126,7 @@ async def test_del_task_one(db_session, task_list, dbglog) -> None:
             models.Task.UNCHECKED_FRMT.format("do a third thing"),
         ]
     )
-    assert up.id == 0
-    assert up.content == correct
+    assert up == correct
 
 
 async def test_chk_task_many(db_session, task_list) -> None:
@@ -137,7 +134,7 @@ async def test_chk_task_many(db_session, task_list) -> None:
     await db_session.commit()
     await db_session.close()
 
-    update: MsgUpdate = await helpers.check_tasks(0, "list 1", 0, 1, 2)
+    update: str = await helpers.check_tasks(0, "list 1", 0, 1, 2)
 
     lst: models.TaskList = await models.TaskList.lookup(db_session, 0, "list 1")
     tasks: list[models.Task] = await lst.awaitable_attrs.tasks
@@ -155,8 +152,7 @@ async def test_chk_task_many(db_session, task_list) -> None:
         )
     )
 
-    assert update.id == 0
-    assert update.content == correct
+    assert update
 
 
 async def test_del_task_many(db_session, task_list, dbglog) -> None:
@@ -164,7 +160,7 @@ async def test_del_task_many(db_session, task_list, dbglog) -> None:
     await db_session.commit()
     await db_session.close()
 
-    status: MsgUpdate = await helpers.del_tasks(0, "list 1", 0, 1, 2)
+    status: str = await helpers.del_tasks(0, "list 1", 0, 1, 2)
     update = status[2]
     lst: models.TaskList = await models.TaskList.lookup(db_session, 0, "list 1")
     tasks: list[models.Task] = await lst.awaitable_attrs.tasks
@@ -173,8 +169,7 @@ async def test_del_task_many(db_session, task_list, dbglog) -> None:
 
     correct = "".join(("**list 1**\n",))
 
-    assert update.id == 0
-    assert update.content == correct
+    assert update == correct
 
 
 async def test_get_edit_txt(db_session, task_list):
@@ -215,8 +210,7 @@ async def test_put_edit(db_session, task_list, dbglog):
     full_text = "!do a\n" "do b\n" "do c"
     update = await helpers.put_edit(0, "list 1", full_text)
 
-    assert update.id == 0
-    assert update.content == "".join(
+    assert update == "".join(
         [
             "**list 1**\n",
             models.Task.CHECKED_FRMT.format("do a"),
@@ -234,27 +228,30 @@ async def test_put_edit(db_session, task_list, dbglog):
     assert tasks[1].content == "do b"
     assert tasks[2].content == "do c"
 
+
 async def is_name_in_guild(db_session, task_lists):
     db_session.add_all(task_lists)
     await db_session.commit()
     await db_session.close()
 
-    assert (await helpers.is_name_in_guild(db_session, 0, 'list 1'))
-    assert (await helpers.is_name_in_guild(db_session, 0, 'list 2'))
-    assert not (await helpers.is_name_in_guild(db_session, 0, 'aaaaa'))
+    assert await helpers.is_name_in_guild(db_session, 0, "list 1")
+    assert await helpers.is_name_in_guild(db_session, 0, "list 2")
+    assert not (await helpers.is_name_in_guild(db_session, 0, "aaaaa"))
+
 
 async def test_put_list_edit(db_session, task_lists):
     db_session.add_all(task_lists)
     await db_session.commit()
     await db_session.close()
 
-    await helpers.put_list_edit(0, 'list 1', 'list a')
-    lsts = await models.TaskList.guild_all(db_session, 0)
+    await helpers.put_list_edit(0, "list 1", "list a")
+    lsts = await models.TaskList.lookup(db_session, 0)
     names = [x.name for x in lsts]
 
-    assert 'list a' in names
-    assert 'list 2' in names
-    assert not 'list 1' in names
+    assert "list a" in names
+    assert "list 2" in names
+    assert not "list 1" in names
+
 
 async def test_del_checked(db_session, task_list, dbglog):
     task_list.tasks[0].checked = True
@@ -262,16 +259,17 @@ async def test_del_checked(db_session, task_list, dbglog):
     await db_session.commit()
     await db_session.close()
 
-    msg = await helpers.del_checked(0, 'list 1')
-    assert msg.content == ''.join((
-        models.TaskList.NAME_FRMT.format('list 1'),
-        models.Task.UNCHECKED_FRMT.format('do something else'),
-        models.Task.UNCHECKED_FRMT.format('do a third thing')))
+    msg = await helpers.del_checked(0, "list 1")
+    assert msg == "".join(
+        (
+            models.TaskList.NAME_FRMT.format("list 1"),
+            models.Task.UNCHECKED_FRMT.format("do something else"),
+            models.Task.UNCHECKED_FRMT.format("do a third thing"),
+        )
+    )
 
-    lst = await models.TaskList.lookup(db_session, 0, 'list 1')
-    assert lst.tasks[0].content == 'do something else'
+    lst = await models.TaskList.lookup(db_session, 0, "list 1")
+    assert lst.tasks[0].content == "do something else"
     assert lst.tasks[0].local_id == 0
-    assert lst.tasks[1].content == 'do a third thing'
+    assert lst.tasks[1].content == "do a third thing"
     assert lst.tasks[1].local_id == 1
-
-

@@ -4,7 +4,7 @@
 import functools
 import logging
 import sys
-from typing import Any, Callable, TypeVar, Generic, Final, ParamSpec
+from typing import Any, Callable, Final, Generic, ParamSpec, TypeVar
 
 from lisette.lib import config
 
