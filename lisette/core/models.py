@@ -8,10 +8,16 @@ import sqlalchemy as sql
 import sqlalchemy.ext.asyncio as sqlaio
 import sqlalchemy.orm as sqlorm
 
+from lisette.core import exceptions
+
 T = TypeVar("T")
 
 DISCORD_MAX_CHARS = 2000
 LIST_NAME_MAX = 38  # To fit in modal title
+
+CHECKED_CHAR = '!'
+META_END_CHAR = '\\'
+META_CHARS = (CHECKED_CHAR)
 
 log = logging.getLogger(__name__)
 
@@ -111,7 +117,15 @@ class TaskList(Base):
         if new_length > DISCORD_MAX_CHARS:
             raise ValueError("Task would make message too long")
         return task
+    
+    def encode_tasks(self) -> str:
+        lines = []
 
+        # add tasks
+        for task in self.tasks:
+            lines.append(task.encode())
+        return '\n'.join(lines)
+    
     @overload
     @classmethod
     async def lookup(
@@ -264,6 +278,53 @@ class Task(Base):
     #         raise ValueError("Task edit would make list message too long")
     #     return content
 
+    def encode(self) -> str:
+        """Return representation of this task as markup text."""
+        chars: list[str] = []
+        # Handle special chars
+        if self.checked:
+            chars.append(CHECKED_CHAR)
+    
+        # Handle putting in escape if necessary.
+        if self.content[0] in META_CHARS:
+            chars.append(META_END_CHAR)
+            
+        # Add content
+        chars.extend(self.content)
+        return ''.join(chars)
+    
+    @classmethod
+    def decode(cls, txt: str) -> Self:
+        """Returns a Task from encoded text."""
+        chars = list(txt)
+        meta_end = 0
+        checked = False
+        i = 0
+        for c in chars:
+            # Special case, next char is start of content, don't continue.
+            if c == META_END_CHAR:
+                meta_end += 1
+                break
+            elif c == CHECKED_CHAR:
+                checked = True
+            # If not special, this is the first char of content
+            else:
+                break
+            meta_end += 1
+
+        content = ''.join(chars[meta_end:])            
+        return Task(content, checked=checked)
+
+    @classmethod
+    def decode_many(cls, txt) -> list[Self]:
+        lines = txt.splitlines()
+        tasks: list[Self] = []
+
+        for line in lines:
+            tasks.append(Task.decode(line))
+
+        return  tasks
+        
     @classmethod
     async def lookup(
         cls, session: sqlaio.AsyncSession, guild_id: int, lst_name: str, local_id: int

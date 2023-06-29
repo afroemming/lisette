@@ -9,6 +9,7 @@ import lisette.core.database as database
 import lisette.core.models as models
 # import lisette.cogs.helpers as helpers
 from lisette.core.database import SESSION
+from lisette.core import exceptions
 from tests.fixtures import db_session, task_list, task_lists
 
 
@@ -101,29 +102,30 @@ async def get_lsts(db_session) -> tuple[models.TaskList, models.TaskList]:
     await db_session.refresh(lsts[1])
     yield lsts
 
+class TestEncoding:
+    def test_task_reversible(self):
+        txt = '! do a'
+        tsk = models.Task.decode(txt)
+        ans = tsk.encode()
+        assert ans == txt
 
-# class TestNumbering:
-#     async def test_base(self, get_lsts) -> None:
-#         tsks0 = await get_lsts[0].awaitable_attrs.tasks
-#         tsks1 = await get_lsts[1].awaitable_attrs.tasks
+    def test_no_meta(self):
+        content = 'do a'
+        tsk = models.Task.decode(content)
+        assert not tsk.checked
+        assert tsk.content == content
 
-#         assert tsks0[0].local_id == 0
-#         assert tsks0[1].local_id == 1
-#         assert tsks0[2].local_id == 2
+    def test_many_inverts(self):
+        txt = ('do a\n'
+               'do b\n'
+               '!do c')
+        tasks = models.Task.decode_many(txt)
+        lst = models.TaskList('list', 0, tasks, 0)
+        ans = lst.encode_tasks()
+        assert ans == txt
 
-#         assert tsks1[0].local_id == 0
-#         assert tsks1[1].local_id == 1
-
-#     async def test_edit(self, get_lsts) -> None:
-#         edit = "do a\n" "do b\n" "do e\n"
-#         await helpers.put_edit(7, "test 0", edit)
-
-#         tsks0 = await get_lsts[0].awaitable_attrs.tasks
-#         tsks1 = await get_lsts[1].awaitable_attrs.tasks
-
-#         assert tsks0[0].local_id == 0
-#         assert tsks0[1].local_id == 1
-#         assert tsks0[2].local_id == 2
-
-#         assert tsks1[0].local_id == 0
-#         assert tsks1[1].local_id == 1
+    def test_escape_inverts(self):
+        txt = r'\!do a'
+        tsk = models.Task.decode(txt)
+        ans = tsk.encode()
+        assert txt == ans

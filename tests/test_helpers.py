@@ -186,22 +186,6 @@ async def test_get_edit_txt(db_session, task_list):
     assert answer == correct
 
 
-async def test_put_line(db_session, dbglog):
-    full_txt = "!do a\n" "do b\n" "do c"
-    tasks = []
-    for line in full_txt.splitlines():
-        task = helpers.put_line(line)
-        tasks.append(task)
-
-    assert tasks[0].content == "do a"
-    assert tasks[1].content == "do b"
-    assert tasks[2].content == "do c"
-
-    assert tasks[0].checked
-    assert not tasks[1].checked
-    assert not tasks[2].checked
-
-
 async def test_put_edit(db_session, task_list, dbglog):
     db_session.add(task_list)
     await db_session.commit()
