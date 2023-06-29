@@ -142,35 +142,15 @@ async def check_tasks(guild_id: int, list_name: str, *positions: int) -> str:
 async def get_edit_txt(guild_id: int, list_name: str) -> str:
     async with SESSION() as session:
         lst = await models.TaskList.lookup(session, guild_id, list_name)
-        tasks = lst.tasks
-        full_txt = []
-        for task in tasks:
-            log.debug("working on: '%s', '%s'", task.content, task.checked)
-            txt = f"{CHECKED_PREFIX}{task.content}" if task.checked else task.content
-            log.debug("made text %s", txt)
-            full_txt.append(txt)
-        log.debug("made full text: %s", full_txt)
-        return "\n".join(full_txt)
-
-
-def put_line(line: str) -> models.Task:
-    tsk = models.Task("")
-    log.debug("working on '%s'", line)
-    if line.startswith(CHECKED_PREFIX):
-        tsk.checked = True
-    tsk.content = line.removeprefix(CHECKED_PREFIX)
-    log.debug("made task %r", tsk)
-    return tsk
+        full_txt = lst.encode_tasks()
+        return full_txt
 
 
 async def put_edit(guild_id: int, list_name: str, full_txt: str) -> str:
     async with SESSION() as session:
+        tasks = models.Task.decode_many(full_txt)
         lst = await models.TaskList.lookup(session, guild_id, list_name)
-        lst.clear()
-        await session.flush()
-        for line in full_txt.splitlines():
-            task = put_line(line)
-            lst.insert(task)
+        lst.tasks = tasks
         update_msg = lst.pretty_print()
         await session.commit()
     return update_msg

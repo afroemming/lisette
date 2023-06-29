@@ -21,7 +21,7 @@ async def test_mk_list(db_session: sqlaio.AsyncSession) -> None:
     assert lst.name == "test"
     assert lst.guild_id == 0
     assert lst.msg_id == 55
-    assert txt == "**test**\n"
+    assert txt == "## test\n"
 
 
 async def test_del_list(db_session: sqlaio.AsyncSession, task_lists) -> None:
@@ -55,7 +55,7 @@ async def test_mk_task(db_session: sqlaio.AsyncSession) -> None:
 
     correct = "".join(
         (
-            "**list 1**\n",
+            "## list 1\n",
             models.Task.UNCHECKED_FRMT.format("do a"),
             models.Task.UNCHECKED_FRMT.format("do b"),
             models.Task.UNCHECKED_FRMT.format("do c"),
@@ -89,7 +89,7 @@ async def test_chk_task_one(
 
     correct = "".join(
         (
-            "**list 1**\n",
+            "## list 1\n",
             models.Task.UNCHECKED_FRMT.format("do something"),
             models.Task.CHECKED_FRMT.format("do something else"),
             models.Task.UNCHECKED_FRMT.format("do a third thing"),
@@ -121,7 +121,7 @@ async def test_del_task_one(db_session, task_list, dbglog) -> None:
 
     correct = "".join(
         [
-            "**list 1**\n",
+            "## list 1\n",
             models.Task.UNCHECKED_FRMT.format("do something"),
             models.Task.UNCHECKED_FRMT.format("do a third thing"),
         ]
@@ -145,7 +145,7 @@ async def test_chk_task_many(db_session, task_list) -> None:
 
     correct = "".join(
         (
-            "**list 1**\n",
+            "## list 1\n",
             models.Task.CHECKED_FRMT.format("do something"),
             models.Task.CHECKED_FRMT.format("do something else"),
             models.Task.CHECKED_FRMT.format("do a third thing"),
@@ -167,7 +167,7 @@ async def test_del_task_many(db_session, task_list, dbglog) -> None:
 
     assert len(tasks) == 0
 
-    correct = "".join(("**list 1**\n",))
+    correct = "".join(("## list 1\n",))
 
     assert update == correct
 
@@ -186,22 +186,6 @@ async def test_get_edit_txt(db_session, task_list):
     assert answer == correct
 
 
-async def test_put_line(db_session, dbglog):
-    full_txt = "!do a\n" "do b\n" "do c"
-    tasks = []
-    for line in full_txt.splitlines():
-        task = helpers.put_line(line)
-        tasks.append(task)
-
-    assert tasks[0].content == "do a"
-    assert tasks[1].content == "do b"
-    assert tasks[2].content == "do c"
-
-    assert tasks[0].checked
-    assert not tasks[1].checked
-    assert not tasks[2].checked
-
-
 async def test_put_edit(db_session, task_list, dbglog):
     db_session.add(task_list)
     await db_session.commit()
@@ -212,7 +196,7 @@ async def test_put_edit(db_session, task_list, dbglog):
 
     assert update == "".join(
         [
-            "**list 1**\n",
+            "## list 1\n",
             models.Task.CHECKED_FRMT.format("do a"),
             models.Task.UNCHECKED_FRMT.format("do b"),
             models.Task.UNCHECKED_FRMT.format("do c"),

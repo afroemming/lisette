@@ -7,9 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import lisette.core.database as database
 import lisette.core.models as models
+
 # import lisette.cogs.helpers as helpers
 from lisette.core.database import SESSION
-from tests.fixtures import db_session, task_list, task_lists
+from lisette.core import exceptions
+from tests.fixtures import db_session, task_list, task_lists, dbglog
 
 
 async def test_lookup_task_list(
@@ -34,7 +36,7 @@ async def test_lookup_task(db_session: AsyncSession, task_list) -> None:
 
 async def test_task_pretty_txt() -> None:
     tsk = models.Task(content="do something")
-    answer = "☐  {0}\n".format("do something")
+    answer = "\\☐  {0}\n".format("do something")
     assert tsk.pretty_txt() == answer
 
 
@@ -102,28 +104,41 @@ async def get_lsts(db_session) -> tuple[models.TaskList, models.TaskList]:
     yield lsts
 
 
-# class TestNumbering:
-#     async def test_base(self, get_lsts) -> None:
-#         tsks0 = await get_lsts[0].awaitable_attrs.tasks
-#         tsks1 = await get_lsts[1].awaitable_attrs.tasks
+class TestEncoding:
+    def test_task_reversible(self):
+        txt = "! do a"
+        tsk = models.Task.decode(txt)
+        ans = tsk.encode()
+        assert ans == txt
 
-#         assert tsks0[0].local_id == 0
-#         assert tsks0[1].local_id == 1
-#         assert tsks0[2].local_id == 2
+    def test_no_meta(self):
+        content = "do a"
+        tsk = models.Task.decode(content)
+        assert not tsk.checked
+        assert tsk.content == content
 
-#         assert tsks1[0].local_id == 0
-#         assert tsks1[1].local_id == 1
+    def test_many_inverts(self):
+        txt = "do a\n" "do b\n" "!do c"
+        tasks = models.Task.decode_many(txt)
+        lst = models.TaskList("list", 0, tasks, 0)
+        ans = lst.encode_tasks()
+        assert ans == txt
 
-#     async def test_edit(self, get_lsts) -> None:
-#         edit = "do a\n" "do b\n" "do e\n"
-#         await helpers.put_edit(7, "test 0", edit)
+    def test_escape_inverts(self):
+        txt = r"\!do a"
+        tsk = models.Task.decode(txt)
+        ans = tsk.encode()
+        assert txt == ans
 
-#         tsks0 = await get_lsts[0].awaitable_attrs.tasks
-#         tsks1 = await get_lsts[1].awaitable_attrs.tasks
 
-#         assert tsks0[0].local_id == 0
-#         assert tsks0[1].local_id == 1
-#         assert tsks0[2].local_id == 2
+class TestSubtasks:
+    def test_decode(self):
+        txt = "-do a"
+        task = models.Task.decode(txt)
+        assert task.indents == 1
 
-#         assert tsks1[0].local_id == 0
-#         assert tsks1[1].local_id == 1
+    def test_pretty(self, dbglog):
+        task = models.Task("do a", indents=1)
+        correct = "\t" + models.Task.UNCHECKED_FRMT.format("do a")
+        ans = task.pretty_txt()
+        assert ans == correct
