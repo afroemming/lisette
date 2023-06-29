@@ -15,3 +15,6 @@ __pycache__/
 *.log
 .secrets/
 .data/
+.python-version
+.coverage
+htmlcov
