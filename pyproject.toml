@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies] # Optional
 dev = ["mypy"]
-test = ["pytest", "coverage"]
+test = ["pytest", "coverage", "pytest-asyncio"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["lisette"]

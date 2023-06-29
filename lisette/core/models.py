@@ -15,9 +15,10 @@ T = TypeVar("T")
 DISCORD_MAX_CHARS = 2000
 LIST_NAME_MAX = 38  # To fit in modal title
 
-CHECKED_CHAR = '!'
-META_END_CHAR = '\\'
-META_CHARS = (CHECKED_CHAR)
+CHECKED_CHAR = "!"
+INDENT_CHAR = "-"
+META_END_CHAR = "\\"
+META_CHARS = (CHECKED_CHAR, INDENT_CHAR)
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class TaskList(Base):
     """
 
     __tablename__ = "task_list"
-    NAME_FRMT = "**{0}**\n"
+    NAME_FRMT = "## {0}\n"
 
     id: sqlorm.Mapped[int] = sqlorm.mapped_column(init=False, primary_key=True)
     name: sqlorm.Mapped[str]
@@ -117,15 +118,15 @@ class TaskList(Base):
         if new_length > DISCORD_MAX_CHARS:
             raise ValueError("Task would make message too long")
         return task
-    
+
     def encode_tasks(self) -> str:
         lines = []
 
         # add tasks
         for task in self.tasks:
             lines.append(task.encode())
-        return '\n'.join(lines)
-    
+        return "\n".join(lines)
+
     @overload
     @classmethod
     async def lookup(
@@ -213,8 +214,8 @@ class Task(Base):
     """
 
     __tablename__ = "task"
-    CHECKED_FRMT = "☑  ~~{0}~~\n"
-    UNCHECKED_FRMT = "☐  {0}\n"
+    CHECKED_FRMT = "\\☑  ~~{0}~~\n"
+    UNCHECKED_FRMT = "\\☐  {0}\n"
 
     content: sqlorm.Mapped[str]
     id: sqlorm.Mapped[int] = sqlorm.mapped_column(init=False, primary_key=True)
@@ -226,17 +227,33 @@ class Task(Base):
     )
     local_id: sqlorm.Mapped[int | None] = sqlorm.mapped_column(default=None)
     checked: sqlorm.Mapped[bool] = sqlorm.mapped_column(default=False)
+    indents: sqlorm.Mapped[int] = sqlorm.mapped_column(default=0)
 
     @classmethod
-    def _format_content(cls, content: str, checked: bool) -> str:
+    def _format_unchecked(cls, content: str, indents: int):
+        full_txt: list[str] = []
+        full_txt.append("\t" * indents)  # indentation
+        full_txt.append(cls.UNCHECKED_FRMT.format(content))  # core
+        return "".join(full_txt)
+
+    @classmethod
+    def _format_checked(cls, content: str, indents: int):
+        full_txt: list[str] = []
+        full_txt.append("\t" * indents)  # indentation
+        full_txt.append(cls.CHECKED_FRMT.format(content))  # core
+        return "".join(full_txt)
+
+    @classmethod
+    def _format_content(cls, content: str, checked: bool, indents: int = 0) -> str:
         """Returns content formatted for display based on bool checked"""
+        log.debug(f"indents: {indents}, content: '{content}'")
         if checked:
-            return cls.CHECKED_FRMT.format(content)
-        return cls.UNCHECKED_FRMT.format(content)
+            return cls._format_checked(content, indents)
+        return cls._format_unchecked(content, indents)
 
     def pretty_txt(self) -> str:
         """Returns content formatted for display"""
-        return Task._format_content(self.content, self.checked)
+        return Task._format_content(self.content, self.checked, self.indents)
 
     # async def delete(self, session: sqlaio.AsyncSession, commit: bool = False) -> None:
     #     """Deletes a Task from its parent and renumbers Tasks w/ higher local_id
@@ -284,27 +301,31 @@ class Task(Base):
         # Handle special chars
         if self.checked:
             chars.append(CHECKED_CHAR)
-    
+        if self.indents > 0:
+            chars.append(INDENT_CHAR * self.indents)
+
         # Handle putting in escape if necessary.
         if self.content[0] in META_CHARS:
             chars.append(META_END_CHAR)
-            
+
         # Add content
         chars.extend(self.content)
-        return ''.join(chars)
-    
+        return "".join(chars)
+
     @classmethod
     def decode(cls, txt: str) -> Self:
         """Returns a Task from encoded text."""
         chars = list(txt)
         meta_end = 0
         checked = False
-        i = 0
+        indents = 0
         for c in chars:
             # Special case, next char is start of content, don't continue.
             if c == META_END_CHAR:
                 meta_end += 1
                 break
+            elif c == INDENT_CHAR:
+                indents += 1
             elif c == CHECKED_CHAR:
                 checked = True
             # If not special, this is the first char of content
@@ -312,8 +333,8 @@ class Task(Base):
                 break
             meta_end += 1
 
-        content = ''.join(chars[meta_end:])            
-        return Task(content, checked=checked)
+        content = "".join(chars[meta_end:])
+        return Task(content, checked=checked, indents=indents)
 
     @classmethod
     def decode_many(cls, txt) -> list[Self]:
@@ -323,8 +344,8 @@ class Task(Base):
         for line in lines:
             tasks.append(Task.decode(line))
 
-        return  tasks
-        
+        return tasks
+
     @classmethod
     async def lookup(
         cls, session: sqlaio.AsyncSession, guild_id: int, lst_name: str, local_id: int
@@ -349,8 +370,13 @@ class Task(Base):
         return len(max_txt)
 
     def __repr__(self) -> str:
-        return (
-            f"Task(id={self.id}, content='{self.content}', "
-            f"parent_list=..., parent_list_id={self.parent_list_id}, "
-            f"local_id={self.local_id}, checked={self.checked})"
-        )
+        attrs_descs: list(str) = []
+        for key, val in self.__dict__.items():
+            if key.startswith("_"):
+                continue
+            if key == "parent_list":
+                attrs_descs.append("parent_list=...")
+                continue
+            attrs_descs.append(f"{key}={val!r}")
+        attr_txt = ", ".join(attrs_descs)
+        return f"Task({attr_txt})"
