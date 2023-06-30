@@ -47,3 +47,9 @@ Lisette requires the bot and applications.command scope, and send messages permi
 
 ## Privacy
 See [Privacy policy](docs/PRIVACY.md)
+
+## Upgrading
+A script `update.sh` is included that will pull the latest version of this app 
+from github and rebuild it. If a database schema change occured since last 
+update, you must run `docker compose run lisette python -m alembic upgrade head`
+to migrate your database.
