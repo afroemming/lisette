@@ -19,3 +19,4 @@ data/
 .python-version
 .coverage
 htmlcov
+data

@@ -4,12 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "Lisette"
-version = "0.1"
+version = "0.2"
 authors = [
   { name="Amelia Froemming"},
 ]
 description = "A Discord bot for making lists together."
 readme = "README.md"
+license = {text = "MIT License"}
 requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",

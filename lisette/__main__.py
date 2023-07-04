@@ -13,6 +13,7 @@ from types import FrameType
 import sqlalchemy.ext.asyncio as sqlaio
 
 import lisette.cogs.tasks
+import lisette.cogs.util
 import lisette.lib.logging
 from lisette.core import bot, database, options
 from lisette.lib import config
@@ -35,6 +36,7 @@ async def main() -> None:
     log = lisette.lib.logging.initalize(cfg, "lisette", DEBUG)
 
     bot_.add_cog(lisette.cogs.tasks.TasksCog(bot_))
+    bot_.add_cog(lisette.cogs.util.UtilCog(bot_))
 
     engine = await database.initalize(cfg.db_path)
     tasks: set[asyncio.Task] = set()  # type: ignore

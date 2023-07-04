@@ -3,6 +3,7 @@ services:
   lisette:
     build:
       context: .
+      target: base
       dockerfile: Dockerfile
     environment:
       - LISETTE_DB_PATH=//data/.db.sqlite
