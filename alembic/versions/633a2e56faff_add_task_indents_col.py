@@ -21,7 +21,7 @@ def upgrade() -> None:
     op.add_column("task", sa.Column("indents", sa.Integer(), nullable=True))
     # ### end Alembic commands ###
     op.execute("UPDATE task SET indents = 0")
-    op.alter_column("users", "is_admin", nullable=False)
+    op.alter_column("task", "indents", nullable=False)
 
 
 def downgrade() -> None:
