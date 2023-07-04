@@ -14,6 +14,7 @@ __pycache__/
 .pytest_cache
 *.log
 .secrets/
+data/
 .data/
 .python-version
 .coverage
